@@ -8,104 +8,106 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <style>
         :root {
-            --bg-primary: #1a1a1a; --bg-secondary: #2a2a2a; --bg-tertiary: #333333;
-            --text-primary: #ffffff; --text-secondary: #aaaaaa; --text-muted: #666666;
-            --highlight: #ffb74d; --border: #333333; --error: #ff6b6b; --success: #4caf50;
+            --bg-primary:#1a1a1a; --bg-secondary:#2a2a2a; --bg-tertiary:#333333;
+            --text-primary:#ffffff; --text-secondary:#aaaaaa; --text-muted:#666666;
+            --highlight:#ffb74d; --border:#333333; --error:#ff6b6b; --success:#4caf50;
         }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Roboto', 'Segoe UI', Arial, sans-serif; background-color: var(--bg-primary); color: var(--text-primary); padding: 20px; line-height: 1.6; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        header { text-align: center; margin-bottom: 40px; }
-        h1 { font-size: 28px; font-weight: 700; margin-bottom: 10px; }
-        .subtitle { font-size: 14px; color: var(--text-secondary); }
-        .controls { background-color: var(--bg-secondary); padding: 20px; border-radius: 8px; margin-bottom: 30px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; }
-        .control-group { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 200px; }
-        label { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
-        select { padding: 12px 16px; font-size: 15px; background-color: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; outline: none; transition: all 0.2s ease; }
-        select:hover { border-color: var(--highlight); }
-        select:focus { border-color: var(--highlight); box-shadow: 0 0 0 3px rgba(255,183,77,0.2); }
-        button { padding: 12px 24px; font-size: 14px; font-weight: 600; background-color: var(--highlight); color: var(--bg-primary); border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s ease; align-self: flex-end; }
-        button:hover { background-color: #ffa726; transform: translateY(-1px); }
-        button:active { transform: translateY(0); }
-        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-        .info-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 12px 16px; background-color: var(--bg-secondary); border-radius: 6px; font-size: 13px; }
-        .info-bar .left { color: var(--text-secondary); }
-        .info-bar .right { color: var(--text-muted); }
-        .wunderground-link { color: var(--highlight); text-decoration: none; font-weight: 600; }
-        .wunderground-link:hover { text-decoration: underline; }
-        .table-container { background-color: var(--bg-secondary); border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 30px; }
-        table { width: 100%; border-collapse: collapse; }
-        thead { background-color: var(--bg-tertiary); }
-        th { padding: 14px 18px; text-align: left; font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid var(--border); }
-        tbody tr { border-bottom: 1px solid var(--border); transition: background-color 0.2s ease; }
-        tbody tr:hover { background-color: rgba(255,183,77,0.05); }
-        tbody tr:last-child { border-bottom: none; }
-        td { padding: 14px 18px; font-size: 15px; }
-        td:first-child { font-weight: 600; color: var(--text-primary); }
-        td:nth-child(2) { font-weight: 700; font-size: 18px; color: var(--highlight); }
-        /* Prev Run column */
-        td.prev-run-cell { font-size: 14px; }
-        td.prev-run-cell .prev-val { color: var(--text-secondary); font-weight: 600; }
-        td.prev-run-cell .trend { font-size: 12px; font-weight: 700; margin-left: 6px; }
-        td.prev-run-cell .trend.up   { color: #ff6b6b; }   /* warmer prev = current dropped */
-        td.prev-run-cell .trend.down { color: #4fc3f7; }   /* cooler prev = current rose */
-        td.prev-run-cell .trend.flat { color: var(--text-muted); }
-        td.prev-run-cell .diff { font-size: 11px; color: var(--text-muted); display: block; margin-top: 1px; }
-        th.prev-run-header { white-space: nowrap; }
-        td:nth-child(4) { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-secondary); }
-        .model-link { color: var(--text-primary); text-decoration: none; transition: color 0.2s ease; }
-        .model-link:hover { color: var(--highlight); text-decoration: underline; }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:-apple-system,BlinkMacSystemFont,'Inter','Roboto','Segoe UI',Arial,sans-serif; background-color:var(--bg-primary); color:var(--text-primary); padding:20px; line-height:1.6; }
+        .container { max-width:1200px; margin:0 auto; }
+        header { text-align:center; margin-bottom:40px; }
+        h1 { font-size:28px; font-weight:700; margin-bottom:10px; }
+        .subtitle { font-size:14px; color:var(--text-secondary); }
+        .controls { background-color:var(--bg-secondary); padding:20px; border-radius:8px; margin-bottom:30px; display:flex; flex-wrap:wrap; gap:15px; align-items:center; }
+        .control-group { display:flex; flex-direction:column; gap:8px; flex:1; min-width:200px; }
+        label { font-size:13px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; }
+        select { padding:12px 16px; font-size:15px; background-color:var(--bg-tertiary); color:var(--text-primary); border:1px solid var(--border); border-radius:6px; cursor:pointer; outline:none; transition:all 0.2s ease; }
+        select:hover { border-color:var(--highlight); }
+        select:focus { border-color:var(--highlight); box-shadow:0 0 0 3px rgba(255,183,77,0.2); }
+        button { padding:12px 24px; font-size:14px; font-weight:600; background-color:var(--highlight); color:var(--bg-primary); border:none; border-radius:6px; cursor:pointer; transition:all 0.2s ease; align-self:flex-end; }
+        button:hover { background-color:#ffa726; transform:translateY(-1px); }
+        button:active { transform:translateY(0); }
+        button:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+        .info-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; padding:12px 16px; background-color:var(--bg-secondary); border-radius:6px; font-size:13px; }
+        .info-bar .left { color:var(--text-secondary); }
+        .info-bar .right { color:var(--text-muted); }
+        .wunderground-link { color:var(--highlight); text-decoration:none; font-weight:600; }
+        .wunderground-link:hover { text-decoration:underline; }
+        .table-container { background-color:var(--bg-secondary); border-radius:8px; overflow:hidden; box-shadow:0 4px 6px rgba(0,0,0,0.3); margin-bottom:30px; }
+        table { width:100%; border-collapse:collapse; }
+        thead { background-color:var(--bg-tertiary); }
+        th { padding:14px 16px; text-align:left; font-size:12px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; border-bottom:2px solid var(--border); }
+        tbody tr { border-bottom:1px solid var(--border); transition:background-color 0.2s ease; }
+        tbody tr:hover { background-color:rgba(255,183,77,0.05); }
+        tbody tr:last-child { border-bottom:none; }
+        td { padding:12px 16px; font-size:15px; vertical-align:top; }
+        td:first-child { font-weight:600; color:var(--text-primary); }
+        td:nth-child(2) { font-weight:700; font-size:18px; color:var(--highlight); white-space:nowrap; }
+        td:last-child { font-family:'Courier New',monospace; font-size:13px; color:var(--text-secondary); white-space:nowrap; }
+
+        /* Previous runs column */
+        .prev-runs-cell { min-width:160px; }
+        .prev-run-row { display:flex; align-items:baseline; gap:5px; padding:2px 0; font-size:12px; line-height:1.4; }
+        .prev-run-label { color:var(--text-muted); min-width:46px; flex-shrink:0; }
+        .prev-run-val { color:var(--text-secondary); font-weight:600; }
+        .prev-run-trend { font-weight:700; font-size:11px; }
+        .prev-run-trend.up   { color:#ff6b6b; }
+        .prev-run-trend.down { color:#4fc3f7; }
+        .prev-run-trend.flat { color:var(--text-muted); }
+        .prev-run-diff { color:var(--text-muted); font-size:11px; }
+        .prev-runs-none { color:var(--text-muted); font-size:12px; }
+
+        .model-link { color:var(--text-primary); text-decoration:none; transition:color 0.2s ease; }
+        .model-link:hover { color:var(--highlight); text-decoration:underline; }
         /* Graph Section */
-        .graph-section { background-color: var(--bg-secondary); border-radius: 8px; padding: 20px; margin-bottom: 30px; }
-        .graph-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
-        .graph-header h2 { font-size: 20px; font-weight: 600; color: var(--text-primary); margin: 0; }
-        .graph-controls { display: flex; gap: 10px; }
-        .graph-controls button { padding: 8px 16px; font-size: 13px; background-color: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); }
-        .graph-controls button:hover { background-color: var(--highlight); color: var(--bg-primary); border-color: var(--highlight); }
-        .chart-container { position: relative; height: 400px; margin-bottom: 20px; }
-        .model-toggles { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; padding-top: 20px; border-top: 1px solid var(--border); }
-        .model-toggle-item { display: flex; align-items: center; gap: 8px; }
-        .model-toggle-item input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: var(--highlight); }
-        .model-toggle-item label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; color: var(--text-secondary); user-select: none; transition: color 0.2s ease; }
-        .model-toggle-item label:hover { color: var(--text-primary); }
-        .color-indicator { width: 24px; height: 3px; border-radius: 2px; display: inline-block; }
-        .loading { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
-        .loading-spinner { display: inline-block; width: 40px; height: 40px; border: 4px solid var(--bg-tertiary); border-top-color: var(--highlight); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .error { background-color: rgba(255,107,107,0.1); border-left: 4px solid var(--error); padding: 20px; border-radius: 6px; margin-bottom: 20px; }
-        .error-title { font-weight: 700; margin-bottom: 8px; color: var(--error); }
-        .error-message { color: var(--text-secondary); font-size: 14px; }
-        .no-data { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
+        .graph-section { background-color:var(--bg-secondary); border-radius:8px; padding:20px; margin-bottom:30px; }
+        .graph-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:15px; }
+        .graph-header h2 { font-size:20px; font-weight:600; color:var(--text-primary); margin:0; }
+        .graph-controls { display:flex; gap:10px; }
+        .graph-controls button { padding:8px 16px; font-size:13px; background-color:var(--bg-tertiary); color:var(--text-primary); border:1px solid var(--border); }
+        .graph-controls button:hover { background-color:var(--highlight); color:var(--bg-primary); border-color:var(--highlight); }
+        .chart-container { position:relative; height:400px; margin-bottom:20px; }
+        .model-toggles { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; padding-top:20px; border-top:1px solid var(--border); }
+        .model-toggle-item { display:flex; align-items:center; gap:8px; }
+        .model-toggle-item input[type="checkbox"] { width:18px; height:18px; cursor:pointer; accent-color:var(--highlight); }
+        .model-toggle-item label { display:flex; align-items:center; gap:8px; cursor:pointer; font-size:14px; color:var(--text-secondary); user-select:none; transition:color 0.2s ease; }
+        .model-toggle-item label:hover { color:var(--text-primary); }
+        .color-indicator { width:24px; height:3px; border-radius:2px; display:inline-block; }
+        .loading { text-align:center; padding:60px 20px; color:var(--text-secondary); }
+        .loading-spinner { display:inline-block; width:40px; height:40px; border:4px solid var(--bg-tertiary); border-top-color:var(--highlight); border-radius:50%; animation:spin 1s linear infinite; margin-bottom:20px; }
+        @keyframes spin { to { transform:rotate(360deg); } }
+        .error { background-color:rgba(255,107,107,0.1); border-left:4px solid var(--error); padding:20px; border-radius:6px; margin-bottom:20px; }
+        .error-title { font-weight:700; margin-bottom:8px; color:var(--error); }
+        .error-message { color:var(--text-secondary); font-size:14px; }
+        .no-data { text-align:center; padding:60px 20px; color:var(--text-secondary); }
         /* Previous Runs Section */
-        .previous-runs-section { background-color: var(--bg-secondary); border-radius: 8px; padding: 20px; margin-bottom: 30px; }
-        .previous-runs-header { margin-bottom: 15px; }
-        .previous-runs-header h2 { font-size: 20px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
-        .previous-runs-header .subtitle { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
-        .previous-runs-controls { display: flex; align-items: center; gap: 12px; margin-top: 12px; margin-bottom: 12px; flex-wrap: wrap; }
-        .previous-runs-controls label { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
-        .previous-runs-controls select { padding: 6px 12px; font-size: 13px; background-color: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; }
-        .legend-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-        .legend-item { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 20px; font-size: 12px; color: var(--text-secondary); background-color: var(--bg-tertiary); border: 1px solid var(--border); cursor: pointer; transition: all 0.2s ease; user-select: none; }
-        .legend-item:hover { border-color: var(--highlight); color: var(--text-primary); }
-        .legend-item.disabled { opacity: 0.35; border-color: var(--border); }
-        .legend-item.disabled .legend-dot { background-color: #555 !important; }
-        .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-        footer { margin-top: 60px; padding-top: 30px; border-top: 1px solid var(--border); text-align: center; color: var(--text-muted); font-size: 13px; }
-        footer a { color: var(--highlight); text-decoration: none; }
-        footer a:hover { text-decoration: underline; }
-        @media (max-width: 768px) {
-            body { padding: 10px; } h1 { font-size: 22px; }
-            .controls { flex-direction: column; } .control-group { width: 100%; min-width: auto; }
-            button { width: 100%; align-self: stretch; }
-            th, td { padding: 10px 10px; font-size: 13px; }
-            td:nth-child(2) { font-size: 15px; }
-            td:nth-child(3) { font-size: 12px; }
-            td:nth-child(4) { font-size: 12px; }
-            .info-bar { flex-direction: column; gap: 10px; text-align: center; }
-            .chart-container { height: 300px; }
-            .graph-header { flex-direction: column; align-items: flex-start; }
-            .graph-controls { width: 100%; } .graph-controls button { flex: 1; }
-            .model-toggles { grid-template-columns: 1fr; }
+        .previous-runs-section { background-color:var(--bg-secondary); border-radius:8px; padding:20px; margin-bottom:30px; }
+        .previous-runs-header { margin-bottom:15px; }
+        .previous-runs-header h2 { font-size:20px; font-weight:600; color:var(--text-primary); margin-bottom:8px; }
+        .previous-runs-header .subtitle { font-size:13px; color:var(--text-secondary); line-height:1.5; }
+        .previous-runs-controls { display:flex; align-items:center; gap:12px; margin-top:12px; margin-bottom:12px; flex-wrap:wrap; }
+        .previous-runs-controls label { font-size:13px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; white-space:nowrap; }
+        .previous-runs-controls select { padding:6px 12px; font-size:13px; background-color:var(--bg-tertiary); color:var(--text-primary); border:1px solid var(--border); border-radius:6px; cursor:pointer; }
+        .legend-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+        .legend-item { display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:20px; font-size:12px; color:var(--text-secondary); background-color:var(--bg-tertiary); border:1px solid var(--border); cursor:pointer; transition:all 0.2s ease; user-select:none; }
+        .legend-item:hover { border-color:var(--highlight); color:var(--text-primary); }
+        .legend-item.disabled { opacity:0.35; border-color:var(--border); }
+        .legend-item.disabled .legend-dot { background-color:#555 !important; }
+        .legend-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+        footer { margin-top:60px; padding-top:30px; border-top:1px solid var(--border); text-align:center; color:var(--text-muted); font-size:13px; }
+        footer a { color:var(--highlight); text-decoration:none; }
+        footer a:hover { text-decoration:underline; }
+        @media (max-width:768px) {
+            body { padding:10px; } h1 { font-size:22px; }
+            .controls { flex-direction:column; } .control-group { width:100%; min-width:auto; }
+            button { width:100%; align-self:stretch; }
+            th, td { padding:10px 10px; font-size:13px; }
+            td:nth-child(2) { font-size:15px; }
+            .info-bar { flex-direction:column; gap:10px; text-align:center; }
+            .chart-container { height:300px; }
+            .graph-header { flex-direction:column; align-items:flex-start; }
+            .graph-controls { width:100%; } .graph-controls button { flex:1; }
+            .model-toggles { grid-template-columns:1fr; }
         }
     </style>
 </head>
@@ -141,14 +143,13 @@
 
     <div id="error-container"></div>
 
-    <!-- TABLE -->
     <div class="table-container">
         <table role="table" aria-label="Weather forecast comparison">
             <thead>
                 <tr>
                     <th scope="col">Model</th>
                     <th scope="col">Current High</th>
-                    <th scope="col" class="prev-run-header">Prev Run High <span style="font-size:10px;font-weight:400;color:var(--text-muted);">(24h ago)</span></th>
+                    <th scope="col">Previous Runs High</th>
                     <th scope="col">Time (ISO 8601)</th>
                 </tr>
             </thead>
@@ -162,9 +163,7 @@
     <div class="graph-section">
         <div class="graph-header">
             <h2>&#128202; 24-Hour Temperature Forecast</h2>
-            <div class="graph-controls">
-                <button id="toggle-all-models">Toggle All</button>
-            </div>
+            <div class="graph-controls"><button id="toggle-all-models">Toggle All</button></div>
         </div>
         <div class="chart-container"><canvas id="temperature-chart"></canvas></div>
         <div class="model-toggles" id="model-toggles"></div>
@@ -205,22 +204,22 @@
 
 <script>
     const locations = [
-        { city:"Toronto",       icao:"CYYZ", lat:43.712,  lon:-79.655,  unit:"celsius",    wunderground:"https://www.wunderground.com/weather/ca/toronto-pearson-international/CYYZ", defaultModels:["GEM HRDPS 2.5km","HRRR 3km"], modelOrder:["GEM HRDPS 2.5km","HRRR 3km","Best Match","ECMWF IFS 25km","ICON Seamless","UKMO Seamless","MeteoFrance Arpege","JMA Seamless","GraphCast AI"] },
-        { city:"London",        icao:"EGLC", lat:51.5053, lon:0.0553,   unit:"celsius",    wunderground:"https://www.wunderground.com/weather/gb/london/EGLC",                         defaultModels:null, modelOrder:null },
-        { city:"Wellington",    icao:"NZWN", lat:-41.323, lon:174.8032, unit:"celsius",    wunderground:"https://www.wunderground.com/weather/nz/wellington/NZWN",                    defaultModels:null, modelOrder:null },
-        { city:"Chicago",       icao:"KORD", lat:41.9769, lon:-87.9082, unit:"fahrenheit", wunderground:"https://www.wunderground.com/weather/us/il/chicago/KORD",                    defaultModels:null, modelOrder:null },
-        { city:"Dallas",        icao:"KDAL", lat:32.8513, lon:-96.8635, unit:"fahrenheit", wunderground:"https://www.wunderground.com/weather/us/tx/dallas/KDAL",                    defaultModels:null, modelOrder:null },
-        { city:"Seoul",         icao:"RKSI", lat:37.4692, lon:126.4506, unit:"celsius",    wunderground:"https://www.wunderground.com/weather/kr/incheon/RKSI",                      defaultModels:null, modelOrder:null },
-        { city:"Buenos Aires",  icao:"SAEZ", lat:-34.8222,lon:-58.5358, unit:"celsius",    wunderground:"https://www.wunderground.com/weather/ar/ezeiza/SAEZ",                       defaultModels:null, modelOrder:null },
-        { city:"Sao Paulo",     icao:"SBSP", lat:-23.6261,lon:-46.6564, unit:"celsius",    wunderground:"https://www.wunderground.com/weather/br/sao-paulo/SBSP",                    defaultModels:null, modelOrder:null },
-        { city:"Atlanta",       icao:"KATL", lat:33.6367, lon:-84.4279, unit:"fahrenheit", wunderground:"https://www.wunderground.com/weather/us/ga/atlanta/KATL",                   defaultModels:null, modelOrder:null }
+        { city:"Toronto",       icao:"CYYZ", lat:43.712,   lon:-79.655,  unit:"celsius",    wunderground:"https://www.wunderground.com/weather/ca/toronto-pearson-international/CYYZ", defaultModels:["GEM HRDPS 2.5km","HRRR 3km"], modelOrder:["GEM HRDPS 2.5km","HRRR 3km","Best Match","ECMWF IFS 25km","ICON Seamless","UKMO Seamless","MeteoFrance Arpege","JMA Seamless","GraphCast AI"] },
+        { city:"London",        icao:"EGLC", lat:51.5053,  lon:0.0553,   unit:"celsius",    wunderground:"https://www.wunderground.com/weather/gb/london/EGLC",                         defaultModels:null, modelOrder:null },
+        { city:"Wellington",    icao:"NZWN", lat:-41.323,  lon:174.8032, unit:"celsius",    wunderground:"https://www.wunderground.com/weather/nz/wellington/NZWN",                    defaultModels:null, modelOrder:null },
+        { city:"Chicago",       icao:"KORD", lat:41.9769,  lon:-87.9082, unit:"fahrenheit", wunderground:"https://www.wunderground.com/weather/us/il/chicago/KORD",                    defaultModels:null, modelOrder:null },
+        { city:"Dallas",        icao:"KDAL", lat:32.8513,  lon:-96.8635, unit:"fahrenheit", wunderground:"https://www.wunderground.com/weather/us/tx/dallas/KDAL",                    defaultModels:null, modelOrder:null },
+        { city:"Seoul",         icao:"RKSI", lat:37.4692,  lon:126.4506, unit:"celsius",    wunderground:"https://www.wunderground.com/weather/kr/incheon/RKSI",                      defaultModels:null, modelOrder:null },
+        { city:"Buenos Aires",  icao:"SAEZ", lat:-34.8222, lon:-58.5358, unit:"celsius",    wunderground:"https://www.wunderground.com/weather/ar/ezeiza/SAEZ",                       defaultModels:null, modelOrder:null },
+        { city:"Sao Paulo",     icao:"SBSP", lat:-23.6261, lon:-46.6564, unit:"celsius",    wunderground:"https://www.wunderground.com/weather/br/sao-paulo/SBSP",                    defaultModels:null, modelOrder:null },
+        { city:"Atlanta",       icao:"KATL", lat:33.6367,  lon:-84.4279, unit:"fahrenheit", wunderground:"https://www.wunderground.com/weather/us/ga/atlanta/KATL",                   defaultModels:null, modelOrder:null }
     ];
 
     const modelNameMap = {
-        "best_match":"Best Match", "gfs_hrrr":"HRRR 3km", "gfs_graphcast025":"GraphCast AI",
-        "ecmwf_ifs025":"ECMWF IFS 25km", "icon_seamless":"ICON Seamless",
-        "gem_hrdps_continental":"GEM HRDPS 2.5km", "jma_seamless":"JMA Seamless",
-        "meteofrance_arpege_world":"MeteoFrance Arpege", "ukmo_seamless":"UKMO Seamless"
+        "best_match":"Best Match","gfs_hrrr":"HRRR 3km","gfs_graphcast025":"GraphCast AI",
+        "ecmwf_ifs025":"ECMWF IFS 25km","icon_seamless":"ICON Seamless",
+        "gem_hrdps_continental":"GEM HRDPS 2.5km","jma_seamless":"JMA Seamless",
+        "meteofrance_arpege_world":"MeteoFrance Arpege","ukmo_seamless":"UKMO Seamless"
     };
 
     const modelColors = {
@@ -234,20 +233,24 @@
                               'meteofrance_arpege_world','ukmo_seamless'];
 
     const PREVIOUS_RUN_DEFS = [
-        { key:'temperature_2m',               label:'Current Run',       color:'rgba(255,183,77,1)',    borderWidth:3 },
-        { key:'temperature_2m_previous_day1',  label:'Run from 24h ago',  color:'rgba(255,183,77,0.75)', borderWidth:2 },
-        { key:'temperature_2m_previous_day2',  label:'Run from 48h ago',  color:'rgba(255,183,77,0.55)', borderWidth:2 },
-        { key:'temperature_2m_previous_day3',  label:'Run from 72h ago',  color:'rgba(255,183,77,0.35)', borderWidth:2 },
-        { key:'temperature_2m_previous_day4',  label:'Run from 96h ago',  color:'rgba(255,183,77,0.18)', borderWidth:2 },
+        { key:'temperature_2m',                label:'Current Run',      color:'rgba(255,183,77,1)',    borderWidth:3 },
+        { key:'temperature_2m_previous_day1',  label:'Run from 24h ago', color:'rgba(255,183,77,0.75)', borderWidth:2 },
+        { key:'temperature_2m_previous_day2',  label:'Run from 48h ago', color:'rgba(255,183,77,0.55)', borderWidth:2 },
+        { key:'temperature_2m_previous_day3',  label:'Run from 72h ago', color:'rgba(255,183,77,0.35)', borderWidth:2 },
+        { key:'temperature_2m_previous_day4',  label:'Run from 96h ago', color:'rgba(255,183,77,0.18)', borderWidth:2 },
     ];
 
-    let currentLocation  = null;
-    let forecastCache    = new Map();
-    let temperatureChart = null;
-    let previousRunsChart= null;
-    let currentChartData = null;
-    let enabledModels    = new Set();
-    let prevHighMap      = {};     // model name → prev-day-1 high temp string
+    // All previous-day labels for the table column (days 1-4)
+    const PREV_DAY_LABELS = { 1:'24h ago', 2:'48h ago', 3:'72h ago', 4:'96h ago' };
+
+    let currentLocation   = null;
+    let forecastCache     = new Map();
+    let temperatureChart  = null;
+    let previousRunsChart = null;
+    let currentChartData  = null;
+    let enabledModels     = new Set();
+    // prevRunsMap: { modelName: { 1: "2.3", 2: "1.9", 3: null, 4: null } }
+    let prevRunsMap       = {};
 
     const CACHE_DURATION = 5 * 60 * 1000;
 
@@ -265,14 +268,13 @@
     const prevRunsModelSelect   = document.getElementById('previous-runs-model-select');
     const prevRunsLegend        = document.getElementById('previous-runs-legend');
 
-    function getModelColor(n) { return modelColors[n] || '#'+Math.floor(Math.random()*16777215).toString(16); }
+    function getModelColor(n) { return modelColors[n] || '#'+Math.floor(Math.random()*16777215).toString(16).padStart(6,'0'); }
 
     function constructURL(location) {
         const params = new URLSearchParams({
             latitude: location.lat, longitude: location.lon,
             hourly: 'temperature_2m', temperature_unit: location.unit,
-            timezone: 'auto', forecast_hours: 24,
-            models: FORECAST_MODELS.join(',')
+            timezone: 'auto', forecast_hours: 24, models: FORECAST_MODELS.join(',')
         });
         return 'https://api.open-meteo.com/v1/forecast?' + params;
     }
@@ -293,13 +295,13 @@
     function showLoading() { forecastBody.innerHTML = `<tr><td colspan="4" class="loading"><div class="loading-spinner"></div><div>Loading forecast data...</div></td></tr>`; }
     function showNoData() { forecastBody.innerHTML = `<tr><td colspan="4" class="no-data">No forecast data available for this location.</td></tr>`; }
 
-    // ── Fetch main forecast ────────────────────────────────────────────────────
+    // ── Fetch main forecast ───────────────────────────────────────────────────
     async function fetchForecast(location) {
         const cached = getCachedForecast(location.city);
         if (cached) return cached;
-        const response = await fetch(constructURL(location));
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
+        const r = await fetch(constructURL(location));
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const data = await r.json();
         const results = [];
         for (const key in data.hourly) {
             if (key === 'time') continue;
@@ -307,63 +309,65 @@
             if (temps.every(t => t === null)) continue;
             const valid = temps.filter(t => t !== null);
             if (!valid.length) continue;
-            const maxTemp  = Math.max(...valid);
-            const maxIndex = temps.indexOf(maxTemp);
-            const hourlyData = data.hourly.time.map((t, i) => ({ x: t, y: temps[i] })).filter(p => p.y !== null);
-            results.push({ model: extractModelName(key), high: maxTemp.toFixed(1), time: data.hourly.time[maxIndex], hourlyData });
+            const maxTemp = Math.max(...valid);
+            const maxIdx  = temps.indexOf(maxTemp);
+            const hourlyData = data.hourly.time.map((t, i) => ({ x:t, y:temps[i] })).filter(p => p.y !== null);
+            results.push({ model: extractModelName(key), high: maxTemp.toFixed(1), time: data.hourly.time[maxIdx], hourlyData });
         }
         results.sort((a, b) => parseFloat(b.high) - parseFloat(a.high));
         setCachedForecast(location.city, results);
         return results;
     }
 
-    // ── Fetch Previous-Day-1 highs for ALL models (single API call) ───────────
-    // Uses previous-runs-api with all models; the FIRST model in the list gets
-    // key "temperature_2m_previous_day1" (no suffix), others get
-    // "temperature_2m_previous_day1_{model_key}". We filter to the next 24h
-    // window to match the same time range as the Current High column.
-    async function fetchPrevDay1Highs(location) {
-        const modelsParam = FORECAST_MODELS.join(',');
+    // ── Fetch all previous-run highs (days 1-4) for every model ──────────────
+    // Single API call with all models and all previous-day variables.
+    // Key format from API:
+    //   temperature_2m_previous_dayN               → first model in list (best_match)
+    //   temperature_2m_previous_dayN_<model_key>   → other models
+    // We use a regex to extract dayN and model_key from each key.
+    async function fetchPrevRunHighs(location) {
+        const dayVars = [1,2,3,4].map(n => `temperature_2m_previous_day${n}`).join(',');
         const url = `https://previous-runs-api.open-meteo.com/v1/forecast`
                   + `?latitude=${location.lat}&longitude=${location.lon}`
-                  + `&hourly=temperature_2m_previous_day1`
+                  + `&hourly=${dayVars}`
                   + `&temperature_unit=${location.unit}`
                   + `&timezone=auto&forecast_days=2`
-                  + `&models=${modelsParam}`;
+                  + `&models=${FORECAST_MODELS.join(',')}`;
         try {
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const data = await response.json();
+            const r = await fetch(url);
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            const data = await r.json();
             if (!data.hourly) return {};
 
-            const now       = Date.now();
-            const windowEnd = now + 24 * 3600 * 1000;
-            const result    = {};
+            const now = Date.now(), windowEnd = now + 24 * 3600 * 1000;
+            const result = {};
 
             for (const key in data.hourly) {
-                if (key === 'time' || !key.includes('previous_day1')) continue;
+                if (key === 'time') continue;
 
-                // Derive model name from key
-                let modelName;
-                if (key === 'temperature_2m_previous_day1') {
-                    // First model in FORECAST_MODELS list gets no suffix
-                    modelName = modelNameMap[FORECAST_MODELS[0]] || FORECAST_MODELS[0];
-                } else {
-                    const modelKey = key.replace('temperature_2m_previous_day1_', '');
-                    modelName = modelNameMap[modelKey] || modelKey.toUpperCase();
-                }
+                // Match:  temperature_2m_previous_day(N)  or
+                //         temperature_2m_previous_day(N)_(model_key)
+                const match = key.match(/^temperature_2m_previous_day(\d+)(?:_(.+))?$/);
+                if (!match) continue;
 
-                // Max within next-24h window only
+                const dayNum   = parseInt(match[1]);
+                const modelKey = match[2] || FORECAST_MODELS[0]; // no suffix → first model
+                const modelName = modelNameMap[modelKey] || modelKey.toUpperCase();
+
+                // Find max within next-24h window
                 const valid = data.hourly[key].map((t, i) => {
                     const ms = new Date(data.hourly.time[i]).getTime();
                     return (ms >= now && ms <= windowEnd && t !== null) ? t : null;
                 }).filter(t => t !== null);
 
-                if (valid.length) result[modelName] = Math.max(...valid).toFixed(1);
+                if (valid.length) {
+                    if (!result[modelName]) result[modelName] = {};
+                    result[modelName][dayNum] = Math.max(...valid).toFixed(1);
+                }
             }
             return result;
-        } catch (err) {
-            console.error('Prev day1 highs error:', err);
+        } catch(err) {
+            console.error('Prev run highs error:', err);
             return {};
         }
     }
@@ -391,42 +395,44 @@
                 modelDisplay = `<a href="https://weather.gc.ca/en/forecast/hourly/index.html?coords=43.712,-79.655" target="_blank" rel="noopener noreferrer" class="model-link">GEM HRDPS 2.5km</a>`;
             }
 
-            // Prev run cell
-            const prevVal = prevHighMap[result.model];
-            let prevCell;
-            if (prevVal === undefined) {
-                prevCell = `<td class="prev-run-cell"><span style="color:var(--text-muted)">—</span></td>`;
+            // Build previous-runs cell: one row per available day
+            const modelPrevRuns = prevRunsMap[result.model];
+            let prevCellContent;
+
+            if (!modelPrevRuns || !Object.keys(modelPrevRuns).length) {
+                prevCellContent = `<span class="prev-runs-none">&#8213; no data</span>`;
             } else {
                 const curr = parseFloat(result.high);
-                const prev = parseFloat(prevVal);
-                const diff = curr - prev;
-                const absDiff = Math.abs(diff).toFixed(1);
+                prevCellContent = [1,2,3,4].map(day => {
+                    const val = modelPrevRuns[day];
+                    if (val === undefined) return '';   // this day not available for model
 
-                let trendArrow, trendClass, diffLabel;
-                if (Math.abs(diff) < 0.15) {
-                    trendArrow = '&#8213;'; trendClass = 'flat';
-                    diffLabel  = 'no change';
-                } else if (diff > 0) {
-                    // Current run HIGHER than prev run → warming trend
-                    trendArrow = '&#8593;'; trendClass = 'up';
-                    diffLabel  = `+${absDiff}${u} vs prev`;
-                } else {
-                    // Current run LOWER than prev run → cooling trend
-                    trendArrow = '&#8595;'; trendClass = 'down';
-                    diffLabel  = `&#8722;${absDiff}${u} vs prev`;
-                }
+                    const prev = parseFloat(val);
+                    const diff = curr - prev;
+                    const absDiff = Math.abs(diff).toFixed(1);
 
-                prevCell = `<td class="prev-run-cell">
-                    <span class="prev-val">${prevVal}${u}</span>
-                    <span class="trend ${trendClass}">${trendArrow}</span>
-                    <span class="diff">${diffLabel}</span>
-                </td>`;
+                    let arrow, cls, diffStr;
+                    if (Math.abs(diff) < 0.15) {
+                        arrow = '&#8213;'; cls = 'flat'; diffStr = '';
+                    } else if (diff > 0) {
+                        arrow = '&#8593;'; cls = 'up';   diffStr = `+${absDiff}${u}`;
+                    } else {
+                        arrow = '&#8595;'; cls = 'down'; diffStr = `&#8722;${absDiff}${u}`;
+                    }
+
+                    return `<div class="prev-run-row">
+                        <span class="prev-run-label">${PREV_DAY_LABELS[day]}:</span>
+                        <span class="prev-run-val">${val}${u}</span>
+                        <span class="prev-run-trend ${cls}">${arrow}</span>
+                        ${diffStr ? `<span class="prev-run-diff">${diffStr}</span>` : ''}
+                    </div>`;
+                }).join('');
             }
 
             return `<tr ${rowStyle}>
                 <td>${modelDisplay}</td>
                 <td>${result.high}${u}</td>
-                ${prevCell}
+                <td class="prev-runs-cell">${prevCellContent}</td>
                 <td>${result.time}</td>
             </tr>`;
         }).join('');
@@ -452,7 +458,7 @@
         const u = unit === 'celsius' ? '°C' : '°F';
         const datasets = sorted.map(r => {
             const on = location.defaultModels ? location.defaultModels.includes(r.model) : true;
-            return { label: r.model, data: r.hourlyData, borderColor: getModelColor(r.model), backgroundColor: getModelColor(r.model)+'20', borderWidth:2, pointRadius:2, pointHoverRadius:5, tension:0.4, fill:false, hidden:!on };
+            return { label:r.model, data:r.hourlyData, borderColor:getModelColor(r.model), backgroundColor:getModelColor(r.model)+'20', borderWidth:2, pointRadius:2, pointHoverRadius:5, tension:0.4, fill:false, hidden:!on };
         });
 
         temperatureChart = new Chart(ctx, {
@@ -470,7 +476,7 @@
                 },
                 scales:{
                     x:{ type:'time', time:{ unit:'hour', displayFormats:{ hour:'ha' }, tooltipFormat:'MMM d, h:mm a' }, grid:{ color:'rgba(255,255,255,0.1)' }, ticks:{ color:'#aaa', maxRotation:0, autoSkip:true, maxTicksLimit:12 } },
-                    y:{ grid:{ color:'rgba(255,255,255,0.1)' }, ticks:{ color:'#aaa', callback: v => v+u } }
+                    y:{ grid:{ color:'rgba(255,255,255,0.1)' }, ticks:{ color:'#aaa', callback:v => v+u } }
                 }
             }
         });
@@ -502,7 +508,7 @@
         enabledModels.clear();
         cbs.forEach((cb, i) => {
             cb.checked = newState;
-            if (temperatureChart) { temperatureChart.getDatasetMeta(i).hidden = !newState; }
+            if (temperatureChart) temperatureChart.getDatasetMeta(i).hidden = !newState;
             if (newState && currentChartData) enabledModels.add(currentChartData[i].model);
         });
         if (temperatureChart) temperatureChart.update();
@@ -517,7 +523,7 @@
         infoBar.style.display       = 'flex';
     }
 
-    // ── Previous Runs chart ────────────────────────────────────────────────────
+    // ── Previous Runs chart ───────────────────────────────────────────────────
     async function fetchPreviousRuns(location, modelKey) {
         const vars = PREVIOUS_RUN_DEFS.map(d => d.key).join(',');
         const url  = `https://previous-runs-api.open-meteo.com/v1/forecast`
@@ -539,7 +545,7 @@
                 }).filter(Boolean);
                 return points.length ? { label:def.label, data:points } : null;
             }).filter(Boolean);
-        } catch(e) { console.error('Prev runs error:', e); return []; }
+        } catch(e) { console.error('Prev runs chart error:', e); return []; }
     }
 
     function buildPreviousRunsLegend(runs) {
@@ -582,7 +588,7 @@
                 },
                 scales:{
                     x:{ type:'time', time:{ unit:'hour', displayFormats:{ hour:'ha' }, tooltipFormat:'MMM d, h:mm a' }, grid:{ color:'rgba(255,255,255,0.1)' }, ticks:{ color:'#aaa', maxRotation:0, autoSkip:true, maxTicksLimit:12 } },
-                    y:{ grid:{ color:'rgba(255,255,255,0.1)' }, ticks:{ color:'#aaa', callback: v => v+u } }
+                    y:{ grid:{ color:'rgba(255,255,255,0.1)' }, ticks:{ color:'#aaa', callback:v => v+u } }
                 }
             }
         });
@@ -604,20 +610,17 @@
         clearError(); showLoading();
         refreshBtn.disabled = true;
         try {
-            // Fire forecast + prev-day-1 highs in parallel
-            const [results, newPrevHighMap] = await Promise.all([
+            const [results, newPrevRunsMap] = await Promise.all([
                 fetchForecast(location),
-                fetchPrevDay1Highs(location)
+                fetchPrevRunHighs(location)
             ]);
-            prevHighMap = newPrevHighMap;
+            prevRunsMap = newPrevRunsMap;
 
             renderChart(results, location.unit, location);
             renderTable(results, location.unit, location);
             updateInfoBar(location);
-
-            // Prev runs chart (non-blocking)
             refreshPreviousRuns();
-        } catch (err) {
+        } catch(err) {
             displayError('Unable to fetch forecast data. Please check your connection and try again.');
             showNoData();
         } finally {
