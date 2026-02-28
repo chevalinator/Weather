@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Polymarket Temperature Forecast Dashboard V2.1</title>
+    <title>Polymarket Temperature Forecast Dashboard V2.2</title>
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
@@ -449,7 +450,7 @@
 <body>
     <div class="container">
         <header>
-            <h1>🌡️ Polymarket Temperature Forecast Dashboard V2.1</h1>
+            <h1>🌡️ Polymarket Temperature Forecast Dashboard V2.2</h1>
             <p class="subtitle">Compare weather model forecasts for betting decision support</p>
         </header>
 
@@ -539,101 +540,98 @@
             {
                 city: "Toronto",
                 icao: "CYYZ",
-                lat: 43.712,
-                lon: -79.655,
+                lat: 43.655,
+                lon: -79.383,
                 unit: "celsius",
                 wunderground: "https://www.wunderground.com/weather/ca/toronto-pearson-international/CYYZ"
             },
             {
                 city: "London",
                 icao: "EGLC",
-                lat: 51.51,
-                lon: 0.028,
+                lat: 51.5053,
+                lon: 0.0553,
                 unit: "celsius",
                 wunderground: "https://www.wunderground.com/weather/gb/london/EGLC"
             },
             {
                 city: "Wellington",
                 icao: "NZWN",
-                lat: -41.3218,
-                lon: 174.796,
+                lat: -41.3230,
+                lon: 174.8032,
                 unit: "celsius",
                 wunderground: "https://www.wunderground.com/weather/nz/wellington/NZWN"
             },
             {
                 city: "Chicago",
                 icao: "KORD",
-                lat: 41.977,
-                lon: -87.905,
+                lat: 41.9769,
+                lon: -87.9082,
                 unit: "fahrenheit",
                 wunderground: "https://www.wunderground.com/weather/us/il/chicago/KORD"
             },
             {
                 city: "Dallas",
                 icao: "KDAL",
-                lat: 32.846,
-                lon: -96.87,
+                lat: 32.8513,
+                lon: -96.8635,
                 unit: "fahrenheit",
                 wunderground: "https://www.wunderground.com/weather/us/tx/dallas/KDAL"
             },
             {
                 city: "Seoul",
                 icao: "RKSI",
-                lat: 37.4943,
-                lon: 126.4905,
+                lat: 37.4692,
+                lon: 126.4506,
                 unit: "celsius",
                 wunderground: "https://www.wunderground.com/weather/kr/incheon/RKSI"
             },
             {
                 city: "Buenos Aires",
                 icao: "SAEZ",
-                lat: -34.788,
-                lon: -58.523,
+                lat: -34.8222,
+                lon: -58.5358,
                 unit: "celsius",
                 wunderground: "https://www.wunderground.com/weather/ar/ezeiza/SAEZ"
             },
             {
                 city: "Sao Paulo",
                 icao: "SBSP",
-                lat: -23.625,
-                lon: -46.661,
+                lat: -23.6261,
+                lon: -46.6564,
                 unit: "celsius",
                 wunderground: "https://www.wunderground.com/weather/br/sao-paulo/SBSP"
             },
             {
                 city: "Atlanta",
                 icao: "KATL",
-                lat: 33.639,
-                lon: -84.405,
+                lat: 33.6367,
+                lon: -84.4279,
                 unit: "fahrenheit",
                 wunderground: "https://www.wunderground.com/weather/us/ga/atlanta/KATL"
             }
         ];
 
-        // Model name mapping
+        // Model name mapping (V2.2: Upgraded to high-resolution models)
         const modelNameMap = {
             'best_match': 'Best Match',
-            'gfs_seamless': 'GFS Seamless',
-            'gfs_global': 'GFS Global',
-            'gfs_hrrr': 'HRRR',
-            'gfs_graphcast025': 'GraphCast',
-            'ecmwf_ifs04': 'ECMWF IFS',
+            'gfs_hrrr': 'HRRR (3km)',
+            'gfs_graphcast025': 'GraphCast AI',
+            'ecmwf_ifs025': 'ECMWF IFS (25km)',
             'icon_seamless': 'ICON Seamless',
-            'gem_global': 'GEM Global',
+            'gem_hrdps_continental': 'GEM HRDPS (2.5km)',
             'jma_seamless': 'JMA Seamless',
             'meteofrance_arpege_world': 'MeteoFrance Arpege',
             'ukmo_seamless': 'UKMO Seamless'
         };
 
-        // Model colors
+        // Model colors (V2.2: Updated for new high-resolution models)
         const modelColors = {
             'Best Match': '#00bcd4',
-            'GFS Seamless': '#2196f3',
-            'HRRR': '#ff5722',
-            'GraphCast': '#4caf50',
-            'ECMWF IFS': '#9c27b0',
+            'HRRR (3km)': '#ff5722',
+            'GraphCast AI': '#4caf50',
+            'ECMWF IFS (25km)': '#9c27b0',
             'ICON Seamless': '#00e676',
-            'GEM Global': '#ffc107',
+            'GEM HRDPS (2.5km)': '#ffc107',
             'JMA Seamless': '#e91e63',
             'UKMO Seamless': '#ff9800',
             'MeteoFrance Arpege': '#f57c00'
@@ -670,15 +668,14 @@
             
             const models = [
                 'best_match',
-                'gfs_seamless',
-                'ecmwf_ifs04',
-                'icon_seamless',
-                'gem_global',
-                'jma_seamless',
-                'ukmo_seamless',
-                'meteofrance_arpege_world',
                 'gfs_hrrr',
-                'gfs_graphcast025'
+                'gfs_graphcast025',
+                'ecmwf_ifs025',
+                'icon_seamless',
+                'gem_hrdps_continental',
+                'jma_seamless',
+                'meteofrance_arpege_world',
+                'ukmo_seamless'
             ].join(',');
 
             const params = new URLSearchParams({
