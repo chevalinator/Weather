@@ -225,6 +225,17 @@
             color: var(--text-secondary);
         }
 
+        .model-link {
+            color: var(--text-primary);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .model-link:hover {
+            color: var(--highlight);
+            text-decoration: underline;
+        }
+
         /* Graph Section Styles */
         .graph-section {
             background-color: var(--bg-secondary);
@@ -857,9 +868,15 @@
             forecastBody.innerHTML = sortedResults.map(result => {
                 const isEnabled = enabledModels.has(result.model);
                 const rowStyle = !isEnabled ? 'style="opacity: 0.4;"' : '';
+
+                let modelDisplay = result.model;
+                if (result.model === 'GEM HRDPS (2.5km)' && location.city === 'Toronto') {
+                    modelDisplay = `<a href="https://weather.gc.ca/en/forecast/hourly/index.html?coords=43.712,-79.655" target="_blank" rel="noopener noreferrer" class="model-link">GEM HRDPS (2.5km) ↗</a>`;
+                }
+
                 return `
                 <tr ${rowStyle}>
-                    <td>${result.model}</td>
+                    <td>${modelDisplay}</td>
                     <td>${result.high}${unitSymbol}</td>
                     <td>${result.time}</td>
                 </tr>`;
