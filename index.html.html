@@ -93,6 +93,14 @@
         footer { margin-top:60px; padding-top:30px; border-top:1px solid var(--border); text-align:center; color:var(--text-muted); font-size:13px; }
         footer a { color:var(--highlight); text-decoration:none; }
         footer a:hover { text-decoration:underline; }
+        .hist-model-toggles { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+        .hist-model-btn {
+            padding:4px 12px; border-radius:14px; font-size:11px; font-weight:600;
+            cursor:pointer; border:2px solid; background:transparent;
+            color:#aaa; transition:all 0.2s; white-space:nowrap;
+        }
+        .hist-model-btn.active { color:#fff; background:rgba(255,255,255,0.12); }
+
         @media (max-width:768px) {
             body { padding:10px; } h1 { font-size:22px; }
             .controls { flex-direction:column; } .control-group { width:100%; min-width:auto; }
@@ -156,6 +164,7 @@
                     <th scope="col">Current High</th>
                     <th scope="col">Previous Runs High</th>
                     <th scope="col">Peak Time</th>
+                    <th scope="col">RMSE 48h</th>
                 </tr>
             </thead>
             <tbody id="forecast-body">
@@ -212,23 +221,8 @@
                 <strong>Tight clustering around the green line = model was confident &amp; accurate.</strong>
             </p>
             <div class="previous-runs-controls">
-                <label for="historical-model-select">Model:</label>
-                <select id="historical-model-select">
-                    <option value="best_match">Best Match</option>
-                    <option value="gfs_hrrr">HRRR 3km</option>
-                    <option value="gem_hrdps_continental">GEM HRDPS 2.5km</option>
-                    <option value="ecmwf_ifs025">ECMWF IFS 25km</option>
-                    <option value="icon_seamless">ICON Seamless</option>
-                    <option value="ukmo_seamless">UKMO Seamless</option>
-                    <option value="gfs_seamless">GFS Seamless</option>
-                    <option value="meteofrance_seamless">MeteoFrance Seamless</option>
-                    <option value="meteofrance_arpege_world">MeteoFrance Arpege</option>
-                    <option value="knmi_seamless">KNMI Seamless</option>
-                    <option value="kma_seamless">KMA Seamless</option>
-                    <option value="bom_access_global">BOM ACCESS-G</option>
-                    <option value="jma_seamless">JMA Seamless</option>
-                    <option value="gfs_graphcast025">GraphCast AI</option>
-                </select>
+                <span class="control-label" style="font-size:11px;color:#888;letter-spacing:.05em">MODELS:</span>
+                <div id="historical-model-toggles" class="hist-model-toggles"></div>
             </div>
             <div class="legend-row" id="historical-legend"></div>
         </div>
@@ -337,8 +331,19 @@
 
     // Styling definition for the ERA5 observed line
     const ACTUAL_WEATHER_DEF = {
-        label:'METAR Observed', color:'rgba(80, 220, 140, 1)', borderWidth:3, borderDash:[]
+        label:'METAR Observed', color:'rgba(255,255,255,0.95)', borderWidth:3, borderDash:[]
     };
+
+    const HIST_MODEL_PALETTE = [
+        [255, 183,  77],  // amber  (model 0)
+        [ 92, 159, 255],  // blue
+        [167, 119, 255],  // purple
+        [255, 119, 191],  // pink
+        [ 56, 222, 222],  // cyan
+        [ 72, 222, 150],  // emerald
+        [255, 140,  80],  // orange
+        [255, 100, 100],  // red
+    ];
 
     const PREV_DAY_LABELS = { 1:'24h ago', 2:'48h ago', 3:'72h ago', 4:'96h ago' };
 
@@ -349,6 +354,7 @@
     let currentChartData  = null;
     let enabledModels     = new Set();
     let prevRunsMap       = {};
+    let modelRmseCache    = {};   // apiKey → RMSE; filled by refreshHistoricalRuns
     let historicalChart   = null;
 
     const CACHE_DURATION = 5 * 60 * 1000;
@@ -366,7 +372,7 @@
     const modelTogglesContainer = document.getElementById('model-toggles');
     const prevRunsModelSelect   = document.getElementById('previous-runs-model-select');
     const prevRunsLegend        = document.getElementById('previous-runs-legend');
-    const historicalModelSelect = document.getElementById('historical-model-select');
+    const historicalModelToggles = document.getElementById('historical-model-toggles');
     const historicalLegend      = document.getElementById('historical-legend');
 
     function getModelColor(n) {
@@ -383,6 +389,19 @@
     function formatTime(isoStr) {
         const d = new Date(isoStr);
         return d.toLocaleString('en-US', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit', hour12:true });
+    }
+
+    // Computes RMSE between model analysis points and METAR observed points.
+    // Points are matched by UTC hour timestamp. Returns null if <3 overlapping hours.
+    function computeRMSE(analysisPoints, metarPoints) {
+        if (!metarPoints?.length || !analysisPoints?.length) return null;
+        const metarMap = new Map(metarPoints.map(p => [new Date(p.x).getTime(), p.y]));
+        let sumSq = 0, n = 0;
+        analysisPoints.forEach(p => {
+            const metarY = metarMap.get(new Date(p.x).getTime());
+            if (metarY !== undefined) { sumSq += (p.y - metarY) ** 2; n++; }
+        });
+        return n >= 3 ? Math.sqrt(sumSq / n) : null;
     }
 
     // Wraps a model name in a link for models that have an external reference.
@@ -536,6 +555,9 @@
                 <td>${result.high}${u}</td>
                 <td class="prev-runs-cell">${prevCellContent}</td>
                 <td>${formatTime(result.time)}</td>
+                <td data-rmse-key="${modelKeyMap[resolveModelName(result.model)] || ''}" style="color:#aaa;font-size:12px;">${
+                    (() => { const k = modelKeyMap[resolveModelName(result.model)]; const v = modelRmseCache[k]; return v != null ? v.toFixed(1)+u : '&#8213;'; })()
+                }</td>
             </tr>`;
         }).join('');
     }
@@ -677,6 +699,7 @@
             const item = document.createElement('span');
             item.className = 'legend-item'; item.dataset.index = i;
             item.innerHTML = `<span class="legend-dot" style="background-color:${def.color}"></span>${run.label}`;
+            if (run.hidden) item.classList.add('disabled');
             item.addEventListener('click', () => {
                 if (!previousRunsChart) return;
                 const meta = previousRunsChart.getDatasetMeta(i);
@@ -765,6 +788,7 @@
             const item = document.createElement('span');
             item.className = 'legend-item'; item.dataset.index = i;
             item.innerHTML = `<span class="legend-dot" style="background-color:${def.color}"></span>${run.label}`;
+            if (run.hidden) item.classList.add('disabled');
             item.addEventListener('click', () => {
                 if (!historicalChart) return;
                 const meta = historicalChart.getDatasetMeta(i);
@@ -784,6 +808,7 @@
             const def = resolvedDefs[i] || resolvedDefs[resolvedDefs.length-1];
             return {
                 label: run.label, data: run.data,
+                hidden: !!run.hidden,
                 borderColor: def.color, backgroundColor: def.color,
                 borderWidth: def.borderWidth,
                 borderDash: def.borderDash,
@@ -813,6 +838,64 @@
         buildHistoricalLegend(runs, resolvedDefs);
     }
 
+
+    // Light fetch: only temperature_2m (analysis) for one model — used for RMSE computation.
+    async function fetchHistoricalAnalysis(location, modelKey) {
+        const url = `https://previous-runs-api.open-meteo.com/v1/forecast`
+                  + `?latitude=${location.lat}&longitude=${location.lon}`
+                  + `&hourly=temperature_2m&temperature_unit=${location.unit}`
+                  + `&timezone=UTC&past_days=3&forecast_days=1&models=${modelKey}`;
+        try {
+            const r = await fetch(url);
+            if (!r.ok) return null;
+            const data = await r.json();
+            if (!data.hourly?.time) return null;
+            const now = Date.now(), cutoff = now - 48 * 3600 * 1000;
+            return data.hourly.time.map((t, i) => {
+                const ms = new Date(t + 'Z').getTime();
+                return (ms >= cutoff && ms <= now && data.hourly.temperature_2m[i] !== null)
+                    ? { x: t + 'Z', y: data.hourly.temperature_2m[i] } : null;
+            }).filter(Boolean);
+        } catch(e) { return null; }
+    }
+
+    // Fetches METAR + analysis for every model in modelOrder, computes RMSE,
+    // then updates table cells and pill buttons. Runs as a background task.
+    async function fetchAllRmse(location) {
+        if (!location.modelOrder) return;
+        const u = location.unit === 'celsius' ? '°C' : '°F';
+        const models = location.modelOrder.map(displayName => {
+            const canonical = resolveModelName(displayName);
+            const apiKey    = modelKeyMap[canonical] || modelKeyMap[displayName];
+            return apiKey ? { apiKey, label: canonical } : null;
+        }).filter(Boolean);
+
+        // Fetch METAR + all model analyses in parallel
+        const [metarRun, ...analysisRuns] = await Promise.all([
+            fetchActualWeather(location),
+            ...models.map(m => fetchHistoricalAnalysis(location, m.apiKey))
+        ]);
+        if (!metarRun) return;
+
+        models.forEach((m, i) => {
+            const pts  = analysisRuns[i];
+            const rmse = pts ? computeRMSE(pts, metarRun.data) : null;
+            if (rmse === null) return;
+            modelRmseCache[m.apiKey] = rmse;
+
+            // Update table cell
+            const cell = document.querySelector(`td[data-rmse-key="${m.apiKey}"]`);
+            if (cell) cell.textContent = rmse.toFixed(1) + u;
+
+            // Update pill button label if it exists in the historical toggles
+            const btn = historicalModelToggles
+                ? historicalModelToggles.querySelector(`[data-key="${m.apiKey}"]`) : null;
+            if (btn) {
+                btn.innerHTML = m.label +
+                    ` <span style="font-size:9px;opacity:0.75;font-weight:400">RMSE ${rmse.toFixed(1)}${u}</span>`;
+            }
+        });
+    }
 
     // Fetches real METAR observations from aviationweather.gov for the last 48h.
     // aviationweather.gov does not send CORS headers, so requests are routed
@@ -866,36 +949,98 @@
     async function refreshHistoricalRuns() {
         if (!currentLocation) return;
         try {
-            // Fetch ERA5 actual weather and model previous-runs in parallel
-            const [modelRuns, actualRun] = await Promise.all([
-                fetchHistoricalRuns(currentLocation, historicalModelSelect.value),
-                fetchActualWeather(currentLocation)
+            const activeBtns = [...historicalModelToggles.querySelectorAll('.hist-model-btn.active')];
+            if (!activeBtns.length) { if (historicalChart) historicalChart.destroy(); return; }
+
+            // Fetch METAR + all active models in parallel
+            const [actualRun, ...perModelRuns] = await Promise.all([
+                fetchActualWeather(currentLocation),
+                ...activeBtns.map(btn => fetchHistoricalRuns(currentLocation, btn.dataset.key))
             ]);
-            // ERA5 (green) goes first so it renders on top of predictions
-            const allRuns = actualRun ? [actualRun, ...modelRuns] : modelRuns;
-            const allDefs = actualRun ? [ACTUAL_WEATHER_DEF, ...HISTORICAL_RUN_DEFS] : HISTORICAL_RUN_DEFS;
+
+            const allRuns = [], allDefs = [];
+            if (actualRun) { allRuns.push(actualRun); allDefs.push(ACTUAL_WEATHER_DEF); }
+
+            const multiModel = activeBtns.length > 1;
+            const opacities  = [0.95, 0.80, 0.60, 0.40, 0.22];
+            const u = currentLocation.unit === 'celsius' ? '°C' : '°F';
+            perModelRuns.forEach((runs, mi) => {
+                const btn       = activeBtns[mi];
+                const ci        = parseInt(btn.dataset.ci);
+                const [r, g, b] = HIST_MODEL_PALETTE[ci % HIST_MODEL_PALETTE.length];
+                const prefix    = multiModel ? btn.dataset.label + ' — ' : '';
+                // All 5 runs included; predicted (ri>0) start hidden but are toggle-able via legend
+                runs.forEach((run, ri) => {
+                    allRuns.push({ ...run, label: prefix + run.label, hidden: ri > 0 });
+                    allDefs.push({
+                        color:       `rgba(${r},${g},${b},${opacities[ri] ?? 0.22})`,
+                        borderWidth: ri === 0 ? 3 : 2,
+                        borderDash:  ri === 0 ? [] : [6, 3]
+                    });
+                });
+                // Compute RMSE for this model's analysis vs METAR
+                const rmse    = actualRun ? computeRMSE(runs[0]?.data, actualRun.data) : null;
+                const rmseStr = rmse !== null ? ` <span style="font-size:9px;opacity:0.75;font-weight:400">RMSE ${rmse.toFixed(1)}${u}</span>` : '';
+                btn.innerHTML = btn.dataset.label + rmseStr;
+                if (rmse !== null) {
+                    modelRmseCache[btn.dataset.key] = rmse;
+                    const cell = document.querySelector(`td[data-rmse-key="${btn.dataset.key}"]`);
+                    if (cell) cell.textContent = rmse.toFixed(1) + u;
+                }
+            });
+
             if (allRuns.length) renderHistoricalChart(allRuns, currentLocation.unit, allDefs);
-            else historicalLegend.innerHTML = '<span style="color:var(--text-muted);font-size:13px;">No historical data available for this model.</span>';
-        } catch(e) { console.error(e); }
+            else historicalLegend.innerHTML = '<span style="color:var(--text-muted);font-size:13px;">No historical data available.</span>';
+        } catch(e) { console.error('Historical runs error:', e); }
     }
 
     // Repopulate both model comboboxes to match current city's modelOrder
     function updateModelSelects(location) {
-        if (!location.modelOrder) return;
-        [prevRunsModelSelect, historicalModelSelect].forEach(select => {
-            const prev = select.value;
-            select.innerHTML = '';
-            location.modelOrder.forEach(displayName => {
-                const canonical = resolveModelName(displayName);
-                const apiKey    = modelKeyMap[canonical] || modelKeyMap[displayName];
-                if (!apiKey) return;
-                const opt = document.createElement('option');
-                opt.value       = apiKey;
-                opt.textContent = canonical;
-                select.appendChild(opt);
+        if (!location.modelOrder || !prevRunsModelSelect || !historicalModelToggles) return;
+        // ── Previous Runs combobox ────────────────────────────────────────
+        const prev = prevRunsModelSelect.value;
+        prevRunsModelSelect.innerHTML = '';
+        location.modelOrder.forEach(displayName => {
+            const canonical = resolveModelName(displayName);
+            const apiKey    = modelKeyMap[canonical] || modelKeyMap[displayName];
+            if (!apiKey) return;
+            const opt = document.createElement('option');
+            opt.value = apiKey; opt.textContent = canonical;
+            prevRunsModelSelect.appendChild(opt);
+        });
+        if ([...prevRunsModelSelect.options].some(o => o.value === prev)) prevRunsModelSelect.value = prev;
+
+        // ── Historical Accuracy: coloured pill checkboxes ─────────────────
+        historicalModelToggles.innerHTML = '';
+
+        location.modelOrder.forEach((displayName, ci) => {
+            const canonical = resolveModelName(displayName);
+            const apiKey    = modelKeyMap[canonical] || modelKeyMap[displayName];
+            if (!apiKey) return;
+            const [r, g, b] = HIST_MODEL_PALETTE[ci % HIST_MODEL_PALETTE.length];
+            const btn = document.createElement('button');
+            btn.className     = 'hist-model-btn' + (ci < 2 ? ' active' : '');
+            btn.dataset.key   = apiKey;
+            btn.dataset.label = canonical;
+            btn.dataset.ci    = ci;
+            btn.textContent   = canonical;
+            btn.style.borderColor = `rgb(${r},${g},${b})`;
+            if (ci < 2) {
+                btn.style.background = `rgba(${r},${g},${b},0.18)`;
+                btn.style.color = `rgb(${r},${g},${b})`;
+            }
+            btn.addEventListener('click', () => {
+                btn.classList.toggle('active');
+                if (btn.classList.contains('active')) {
+                    btn.style.background = `rgba(${r},${g},${b},0.18)`;
+                    btn.style.color = `rgb(${r},${g},${b})`;
+                } else {
+                    btn.style.background = 'transparent';
+                    btn.style.color = '#aaa';
+                }
+                refreshHistoricalRuns();
             });
-            // Keep previous selection if still available, else fall back to first
-            if ([...select.options].some(o => o.value === prev)) select.value = prev;
+            historicalModelToggles.appendChild(btn);
         });
     }
 
@@ -903,8 +1048,8 @@
         currentLocation = location;
         clearError(); showLoading();
         refreshBtn.disabled = true;
-        updateModelSelects(location);
         try {
+            updateModelSelects(location);
             const [results, newPrevRunsMap] = await Promise.all([
                 fetchForecast(location),
                 fetchPrevRunHighs(location)
@@ -915,6 +1060,7 @@
             updateInfoBar(location);
             refreshPreviousRuns();
             refreshHistoricalRuns();
+            fetchAllRmse(location).catch(console.error);  // background — fills RMSE col & pills
         } catch(err) {
             displayError('Unable to fetch forecast data. Please check your connection and try again.');
             showNoData();
@@ -927,7 +1073,7 @@
     refreshBtn.addEventListener('click', () => { if (currentLocation) { forecastCache.delete(currentLocation.city); fetchAndDisplay(currentLocation); } });
     toggleAllBtn.addEventListener('click', toggleAllModels);
     prevRunsModelSelect.addEventListener('change', refreshPreviousRuns);
-    historicalModelSelect.addEventListener('change', refreshHistoricalRuns);
+    // historical model toggles fire refreshHistoricalRuns via their click listeners
 
     window.addEventListener('DOMContentLoaded', () => fetchAndDisplay(locations[0]));
 </script>
