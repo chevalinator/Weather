@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atlanta Temp · Polymarket Live Order Book</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #0f1117;
+            color: #e2e8f0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 16px;
+        }
+        .card {
+            background: #1a1d2e;
+            border: 1px solid #2d3148;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 620px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        .card-header {
+            padding: 24px 28px 20px;
+            border-bottom: 1px solid #2d3148;
+        }
+        .poly-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #1e2440;
+            border: 1px solid #3b4270;
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 12px;
+            color: #818cf8;
+            font-weight: 600;
+            margin-bottom: 14px;
+            text-decoration: none;
+        }
+        .poly-badge:hover { background: #252b50; }
+        .poly-logo { width: 14px; height: 14px; border-radius: 3px; background: #6366f1; }
+        h1 {
+            font-size: 18px;
+            font-weight: 700;
+            line-height: 1.4;
+            color: #f1f5f9;
+            margin-bottom: 10px;
+        }
+        .meta {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            font-size: 13px;
+            color: #64748b;
+        }
+        .live-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: #052e16;
+            border: 1px solid #16a34a;
+            border-radius: 20px;
+            padding: 3px 10px;
+            font-size: 12px;
+            color: #4ade80;
+            font-weight: 600;
+        }
+        .live-dot {
+            width: 6px; height: 6px;
+            background: #4ade80;
+            border-radius: 50%;
+            animation: pulse 1.4s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.85); }
+        }
+        .col-headers {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            padding: 12px 28px 6px;
+            gap: 10px;
+        }
+        .col-label {
+            width: 80px;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #475569;
+        }
+        .markets-list { padding: 0 28px 20px; }
+        .market-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 13px 0;
+            border-bottom: 1px solid #1e2235;
+            gap: 12px;
+            transition: background 0.2s;
+        }
+        .market-row:last-child { border-bottom: none; }
+        .bracket {
+            flex: 1;
+            font-size: 14px;
+            color: #cbd5e1;
+            font-weight: 500;
+        }
+        .prices { display: flex; gap: 10px; }
+        .price-chip {
+            width: 80px;
+            padding: 8px 0;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 15px;
+            font-weight: 700;
+            transition: transform 0.15s;
+        }
+        .price-chip:hover { transform: scale(1.05); }
+        .bid-chip { background: #052e16; color: #4ade80; border: 1px solid #166534; }
+        .ask-chip { background: #2d0a0a; color: #f87171; border: 1px solid #7f1d1d; }
+        .price-chip .sub {
+            display: block;
+            font-size: 10px;
+            font-weight: 600;
+            opacity: 0.7;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+        .loading-state {
+            padding: 50px 28px;
+            text-align: center;
+            color: #475569;
+        }
+        .spinner {
+            width: 32px; height: 32px;
+            border: 3px solid #2d3148;
+            border-top-color: #6366f1;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .error-state {
+            padding: 40px 28px;
+            text-align: center;
+            color: #f87171;
+        }
+        .error-state .icon { font-size: 28px; margin-bottom: 10px; }
+        .footer {
+            padding: 14px 28px;
+            border-top: 1px solid #2d3148;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: #475569;
+        }
+        .refresh-btn {
+            background: #1e2440;
+            border: 1px solid #3b4270;
+            color: #818cf8;
+            border-radius: 6px;
+            padding: 5px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .refresh-btn:hover { background: #252b50; }
+        a.ext-link {
+            color: #6366f1;
+            text-decoration: none;
+            font-size: 12px;
+        }
+        a.ext-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="card-header">
+        <a class="poly-badge" href="https://polymarket.com/event/highest-temperature-in-atlanta-on-march-2-2026" target="_blank">
+            <div class="poly-logo"></div>
+            polymarket.com
+        </a>
+        <h1 id="event-title">Highest temperature in Atlanta on March 2, 2026?</h1>
+        <div class="meta">
+            <span class="live-pill">
+                <div class="live-dot"></div>
+                Live
+            </span>
+            <span id="last-updated">Connecting...</span>
+        </div>
+    </div>
+
+    <div class="col-headers">
+        <span class="col-label" title="Highest price a buyer is willing to pay for YES shares">Top Bid</span>
+        <span class="col-label" title="Lowest price a seller is willing to accept for YES shares">Top Ask</span>
+    </div>
+
+    <div id="markets-container" class="markets-list">
+        <div class="loading-state">
+            <div class="spinner"></div>
+            Fetching live order book from Polymarket...
+        </div>
+    </div>
+
+    <div class="footer">
+        <a class="ext-link" href="https://polymarket.com/event/highest-temperature-in-atlanta-on-march-2-2026" target="_blank">
+            View on Polymarket ↗
+        </a>
+        <button class="refresh-btn" onclick="fetchData()">↻ Refresh</button>
+    </div>
+</div>
+
+<script>
+const EVENT_SLUG = "highest-temperature-in-atlanta-on-march-2-2026";
+
+function toPercent(price) {
+    if (price === null || price === undefined) return "—";
+    return (parseFloat(price) * 100).toFixed(1) + "¢";
+}
+
+function now() {
+    return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+async function fetchData() {
+    const container = document.getElementById("markets-container");
+    const statusEl = document.getElementById("last-updated");
+
+    try {
+        const eventRes = await fetch(`https://gamma-api.polymarket.com/events?slug=${EVENT_SLUG}`);
+        const eventData = await eventRes.json();
+
+        if (!eventData || eventData.length === 0) {
+            container.innerHTML = `<div class="error-state"><div class="icon">🔍</div>Event not found or has concluded.</div>`;
+            return;
+        }
+
+        const markets = eventData[0].markets;
+        let html = "";
+
+        for (const market of markets) {
+            let tokens = market.clobTokenIds;
+            if (typeof tokens === "string") tokens = JSON.parse(tokens);
+            const yesToken = tokens[0];
+
+            const bookRes = await fetch(`https://clob.polymarket.com/book?token_id=${yesToken}`);
+            const book = await bookRes.json();
+
+            const topBid = book.bids && book.bids.length > 0 ? book.bids[0].price : null;
+            const topAsk = book.asks && book.asks.length > 0 ? book.asks[0].price : null;
+            const name = market.groupItemTitle || market.question;
+
+            html += `
+                <div class="market-row">
+                    <div class="bracket">${name}</div>
+                    <div class="prices">
+                        <div class="price-chip bid-chip" title="Top Bid: highest buy offer">
+                            <span class="sub">Bid</span>${toPercent(topBid)}
+                        </div>
+                        <div class="price-chip ask-chip" title="Top Ask: lowest sell offer">
+                            <span class="sub">Ask</span>${toPercent(topAsk)}
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        container.innerHTML = html;
+        statusEl.textContent = "Last updated: " + now();
+
+    } catch (err) {
+        console.error(err);
+        container.innerHTML = `<div class="error-state"><div class="icon">⚠️</div>Could not reach Polymarket API.<br><small>Check your internet connection.</small></div>`;
+        statusEl.textContent = "Connection error";
+    }
+}
+
+fetchData();
+setInterval(fetchData, 5000);
+</script>
+</body>
+</html>
