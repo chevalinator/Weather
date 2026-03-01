@@ -736,18 +736,22 @@
         const url  = `https://previous-runs-api.open-meteo.com/v1/forecast`
                    + `?latitude=${location.lat}&longitude=${location.lon}`
                    + `&hourly=${vars}&temperature_unit=${location.unit}`
-                   + `&timezone=auto&past_days=2&forecast_days=0&models=${modelKey}`;
+                   + `&timezone=UTC&past_days=3&forecast_days=1&models=${modelKey}`;
         try {
             const r = await fetch(url);
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
             const data = await r.json();
             if (!data.hourly?.time) return [];
+            const now    = Date.now();
+            const cutoff = now - 48 * 3600 * 1000;   // rolling 48h window — matches METAR
             return HISTORICAL_RUN_DEFS.map(def => {
                 const temps = data.hourly[def.key];
                 if (!temps) return null;
-                const points = data.hourly.time.map((t, i) =>
-                    temps[i] !== null ? { x:t, y:temps[i] } : null
-                ).filter(Boolean);
+                const points = data.hourly.time.map((t, i) => {
+                    const ms = new Date(t + 'Z').getTime();
+                    return (ms >= cutoff && ms <= now && temps[i] !== null)
+                        ? { x: t + 'Z', y: temps[i] } : null;
+                }).filter(Boolean);
                 return points.length ? { label:def.label, data:points } : null;
             }).filter(Boolean);
         } catch(e) { console.error('Historical runs error:', e); return []; }
@@ -815,24 +819,47 @@
     // through corsproxy.io which adds the required Access-Control-Allow-Origin header.
     async function fetchActualWeather(location) {
         const target  = `https://aviationweather.gov/api/data/metar`
-                      + `?ids=${location.icao}&format=json&hours=48`;
+                      + `?ids=${location.icao}&format=json&hours=51`;
         const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(target)}`;
         try {
             const r = await fetch(proxyUrl);
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
             const data = await r.json();
             if (!Array.isArray(data) || !data.length) return null;
+            const now    = Date.now();
+            const cutoff = now - 48 * 3600 * 1000;   // same rolling 48h window as model
             const points = data
                 .filter(obs => obs.temp !== null && obs.temp !== undefined)
+                .filter(obs => {
+                    const ms = new Date(obs.reportTime).getTime();
+                    return ms >= cutoff && ms <= now;
+                })
                 .map(obs => {
                     const tempC = obs.temp;
                     const y = location.unit === 'fahrenheit'
                         ? Math.round(tempC * 9/5 + 32)
                         : Math.round(tempC);
-                    return { x: new Date(obs.obsTime * 1000).toISOString(), y };
+                    // reportTime is the official hour label (US airports observe at :53,
+                    // report as the next :00) — aligns with Open-Meteo's hourly grid
+                    return { x: obs.reportTime, y };
                 })
                 .sort((a, b) => new Date(a.x) - new Date(b.x));
-            return points.length ? { label:'METAR Observed', data:points } : null;
+            // Deduplicate to one point per hour, snapped to the top of the hour.
+            // SPECI reports create sub-hourly entries; without dedup, Chart.js
+            // tooltip mode:'index' snaps to those and finds no model data there.
+            const hourMap = new Map();
+            points.forEach(p => {
+                const d   = new Date(p.x);
+                const hTs = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours());
+                const off = Math.abs(d.getUTCMinutes() * 60 + d.getUTCSeconds());
+                if (!hourMap.has(hTs) || off < hourMap.get(hTs).off) {
+                    hourMap.set(hTs, { x: new Date(hTs).toISOString(), y: p.y, off });
+                }
+            });
+            const hourly = Array.from(hourMap.values())
+                .sort((a, b) => new Date(a.x) - new Date(b.x))
+                .map(({ x, y }) => ({ x, y }));
+            return hourly.length ? { label:'METAR Observed', data:hourly } : null;
         } catch(e) { console.error('METAR fetch error:', e); return null; }
     }
 
