@@ -370,6 +370,16 @@
     // Resolve a display name through alias map
     function resolveModelName(n) { return modelNameAliases[n] || n; }
 
+    // Wraps a model name in a link for models that have an external reference.
+    // URL is built dynamically from the current location's coordinates.
+    function formatModelName(modelName, location) {
+        if (modelName === 'GEM HRDPS 2.5km') {
+            const url = `https://weather.gc.ca/en/forecast/hourly/index.html?coords=${location.lat},${location.lon}`;
+            return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="model-link">${modelName}</a>`;
+        }
+        return modelName;
+    }
+
     function constructURL(location) {
         const params = new URLSearchParams({
             latitude: location.lat, longitude: location.lon,
@@ -476,7 +486,7 @@
         forecastBody.innerHTML = sorted.map(result => {
             const isEnabled = enabledModels.has(result.model);
             const rowStyle  = isEnabled ? '' : 'style="opacity:0.4"';
-            const modelDisplay = result.model;
+            const modelDisplay = formatModelName(result.model, location);
 
             const modelPrevRuns = prevRunsMap[result.model];
             let prevCellContent;
