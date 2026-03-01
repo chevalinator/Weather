@@ -133,7 +133,7 @@
 
     <div id="info-bar" class="info-bar" style="display:none;">
         <div class="left"><strong id="location-name"></strong> &bull; <span id="temperature-unit"></span></div>
-        <div class="right">Last updated: <span id="last-updated"></span> &bull; <a id="wunderground-link" href="#" target="_blank" rel="noopener noreferrer" class="wunderground-link">Weather Underground</a></div>
+        <div class="right">Last updated: <span id="last-updated"></span> &bull; <a id="wunderground-link" href="#" target="_blank" rel="noopener noreferrer" class="wunderground-link">Weather Underground</a> &bull; <a id="polymarket-link" href="#" target="_blank" rel="noopener noreferrer" class="wunderground-link">&#127920; Polymarket</a></div>
     </div>
 
     <div id="error-container"></div>
@@ -536,11 +536,23 @@
         if (currentChartData && currentLocation) renderTable(currentChartData, currentLocation.unit, currentLocation);
     }
 
+    // Generates the Polymarket event URL for "highest temperature in {city} on {date}"
+    // City names with spaces are hyphenated (e.g. "Buenos Aires" → "buenos-aires")
+    function generatePolymarketURL(location) {
+        const now    = new Date();
+        const months = ['january','february','march','april','may','june',
+                        'july','august','september','october','november','december'];
+        const citySlug = location.city.toLowerCase().replace(/\s+/g, '-');
+        return `https://polymarket.com/event/highest-temperature-in-${citySlug}-on-`
+             + `${months[now.getMonth()]}-${now.getDate()}-${now.getFullYear()}`;
+    }
+
     function updateInfoBar(location) {
         locationNameEl.textContent    = `${location.city} (${location.icao})`;
         temperatureUnitEl.textContent = location.unit === 'celsius' ? 'Celsius' : 'Fahrenheit';
         lastUpdatedEl.textContent     = new Date().toLocaleTimeString('en-US',{ hour:'2-digit', minute:'2-digit', hour12:true });
         wundergroundLink.href         = location.wunderground;
+        document.getElementById('polymarket-link').href = generatePolymarketURL(location);
         infoBar.style.display         = 'flex';
     }
 
