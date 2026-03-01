@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -96,8 +97,15 @@
             body { padding:10px; } h1 { font-size:22px; }
             .controls { flex-direction:column; } .control-group { width:100%; min-width:auto; }
             button { width:100%; align-self:stretch; }
-            th, td { padding:10px 10px; font-size:13px; }
-            td:nth-child(2) { font-size:15px; }
+            /* Horizontal scroll so no column is ever cut off */
+            .table-container { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+            table { min-width:480px; }
+            th { padding:8px 8px; font-size:10px; }
+            td { padding:8px 8px; font-size:12px; }
+            td:nth-child(2) { font-size:14px; }
+            td:last-child { font-size:11px; }
+            .prev-runs-cell { min-width:120px; }
+            .prev-run-row { font-size:11px; }
             .info-bar { flex-direction:column; gap:10px; text-align:center; }
             .chart-container { height:300px; }
             .graph-header { flex-direction:column; align-items:flex-start; }
@@ -147,7 +155,7 @@
                     <th scope="col">Model</th>
                     <th scope="col">Current High</th>
                     <th scope="col">Previous Runs High</th>
-                    <th scope="col">Time (ISO 8601)</th>
+                    <th scope="col">Peak Time</th>
                 </tr>
             </thead>
             <tbody id="forecast-body">
@@ -200,8 +208,8 @@
         <div class="previous-runs-header">
             <h2>&#128198; Historical Accuracy (Last 48 Hours)</h2>
             <p class="subtitle">
-                Compares what previous model runs <em>predicted</em> for each past hour vs what <strong>actually occurred</strong> (white line).<br>
-                <strong>Tight clustering around the white line = model was confident &amp; accurate.</strong>
+                Compares what previous model runs <em>predicted</em> for each past hour vs real <strong>METAR observations</strong> (green line) from the airport.<br>
+                <strong>Tight clustering around the green line = model was confident &amp; accurate.</strong>
             </p>
             <div class="previous-runs-controls">
                 <label for="historical-model-select">Model:</label>
@@ -329,7 +337,7 @@
 
     // Styling definition for the ERA5 observed line
     const ACTUAL_WEATHER_DEF = {
-        label:'ERA5 Observed', color:'rgba(80, 220, 140, 1)', borderWidth:3, borderDash:[]
+        label:'METAR Observed', color:'rgba(80, 220, 140, 1)', borderWidth:3, borderDash:[]
     };
 
     const PREV_DAY_LABELS = { 1:'24h ago', 2:'48h ago', 3:'72h ago', 4:'96h ago' };
@@ -369,6 +377,13 @@
 
     // Resolve a display name through alias map
     function resolveModelName(n) { return modelNameAliases[n] || n; }
+
+    // Formats an ISO timestamp to compact display without the year
+    // e.g. "2026-02-28T14:00" → "Feb 28, 2:00 PM"
+    function formatTime(isoStr) {
+        const d = new Date(isoStr);
+        return d.toLocaleString('en-US', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit', hour12:true });
+    }
 
     // Wraps a model name in a link for models that have an external reference.
     // URL is built dynamically from the current location's coordinates.
@@ -520,7 +535,7 @@
                 <td>${modelDisplay}</td>
                 <td>${result.high}${u}</td>
                 <td class="prev-runs-cell">${prevCellContent}</td>
-                <td>${result.time}</td>
+                <td>${formatTime(result.time)}</td>
             </tr>`;
         }).join('');
     }
@@ -795,33 +810,30 @@
     }
 
 
-    // Fetches ERA5 reanalysis ("actual" observed weather) from the archive API
-    // for the last 48 hours. Note: ERA5 typically lags ~5 days so recent hours
-    // may be absent — the chart will simply show whatever data is available.
+    // Fetches real METAR observations from aviationweather.gov for the last 48h.
+    // aviationweather.gov does not send CORS headers, so requests are routed
+    // through corsproxy.io which adds the required Access-Control-Allow-Origin header.
     async function fetchActualWeather(location) {
-        const now        = new Date();
-        const threeDaysAgo = new Date(now.getTime() - 5 * 24 * 3600 * 1000);
-        const fmt = d => d.toISOString().split('T')[0];
-        const url = `https://archive-api.open-meteo.com/v1/archive`
-                  + `?latitude=${location.lat}&longitude=${location.lon}`
-                  + `&hourly=temperature_2m`
-                  + `&temperature_unit=${location.unit}`
-                  + `&timezone=auto`
-                  + `&start_date=${fmt(threeDaysAgo)}&end_date=${fmt(now)}`;
+        const target  = `https://aviationweather.gov/api/data/metar`
+                      + `?ids=${location.icao}&format=json&hours=48`;
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(target)}`;
         try {
-            const r = await fetch(url);
+            const r = await fetch(proxyUrl);
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
             const data = await r.json();
-            if (!data.hourly?.time) return null;
-            // Filter to last 48h only
-            const cutoff = now.getTime() - 48 * 3600 * 1000;
-            const points = data.hourly.time.map((t, i) => {
-                const ms = new Date(t).getTime();
-                return (ms >= cutoff && data.hourly.temperature_2m[i] !== null)
-                    ? { x:t, y:data.hourly.temperature_2m[i] } : null;
-            }).filter(Boolean);
-            return points.length ? { label:'ERA5 Observed', data:points } : null;
-        } catch(e) { console.error('ERA5 fetch error:', e); return null; }
+            if (!Array.isArray(data) || !data.length) return null;
+            const points = data
+                .filter(obs => obs.temp !== null && obs.temp !== undefined)
+                .map(obs => {
+                    const tempC = obs.temp;
+                    const y = location.unit === 'fahrenheit'
+                        ? Math.round(tempC * 9/5 + 32)
+                        : Math.round(tempC);
+                    return { x: new Date(obs.obsTime * 1000).toISOString(), y };
+                })
+                .sort((a, b) => new Date(a.x) - new Date(b.x));
+            return points.length ? { label:'METAR Observed', data:points } : null;
+        } catch(e) { console.error('METAR fetch error:', e); return null; }
     }
 
     async function refreshHistoricalRuns() {
