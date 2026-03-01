@@ -133,7 +133,7 @@
 
     <div id="info-bar" class="info-bar" style="display:none;">
         <div class="left"><strong id="location-name"></strong> &bull; <span id="temperature-unit"></span></div>
-        <div class="right">Last updated: <span id="last-updated"></span> &bull; <a id="wunderground-link" href="#" target="_blank" rel="noopener noreferrer" class="wunderground-link">Weather Underground</a> &bull; <a id="polymarket-link" href="#" target="_blank" rel="noopener noreferrer" class="wunderground-link">&#127920; Polymarket</a></div>
+        <div class="right">Last updated: <span id="last-updated"></span> &bull; <a id="wunderground-link" href="#" target="_blank" rel="noopener noreferrer" class="wunderground-link">Weather Underground</a></div>
     </div>
 
     <div id="error-container"></div>
@@ -201,6 +201,7 @@
 </div>
 
 <script>
+    // ── Locations (index matches <select> option values) ──────────────────────
     const locations = [
         { city: "Atlanta",      icao: "KATL", lat: 33.6367,  lon: -84.4279,  unit: "fahrenheit", wunderground: "https://www.wunderground.com/weather/us/ga/atlanta/KATL",                         defaultModels: ["HRRR 3km", "Best Match"],                                   modelOrder: ["HRRR 3km", "Best Match", "NAM 3km", "GEM HRDPS 2.5km", "ECMWF IFS", "GFS Seamless", "ICON Seamless", "JMA Seamless", "GraphCast AI"] },
         { city: "London",       icao: "EGLC", lat: 51.5053,  lon: 0.0553,    unit: "celsius",    wunderground: "https://www.wunderground.com/weather/gb/london/EGLC",                            defaultModels: ["UKMO Seamless", "Best Match", "MeteoFrance Seamless"],      modelOrder: ["UKMO Seamless", "Best Match", "MeteoFrance Seamless", "ICON Seamless", "KNMI Seamless", "ECMWF IFS 25km", "GFS Seamless", "JMA Seamless", "GraphCast AI"] },
@@ -213,6 +214,7 @@
         { city: "Sao Paulo",    icao: "SBSP", lat: -23.6261, lon: -46.6564,  unit: "celsius",    wunderground: "https://www.wunderground.com/weather/br/sao-paulo/SBSP",                         defaultModels: ["Best Match", "ECMWF IFS"],                                  modelOrder: ["Best Match", "ECMWF IFS", "ICON Seamless", "UKMO Seamless", "BOM ACCESS-G", "GFS Seamless", "MeteoFrance Arpege", "JMA Seamless", "GraphCast AI"] }
     ];
 
+    // ── Model API key → display name ──────────────────────────────────────────
     const modelNameMap = {
         "best_match":                "Best Match",
         "gfs_hrrr":                  "HRRR 3km",
@@ -230,8 +232,10 @@
         "bom_access_global":         "BOM ACCESS-G"
     };
 
+    // modelOrder alias: some locations use "ECMWF IFS" (short), others "ECMWF IFS 25km"
+    // We normalise display names at render time using this alias map
     const modelNameAliases = {
-        "ECMWF IFS": "ECMWF IFS 25km"
+        "ECMWF IFS": "ECMWF IFS 25km"   // short form → canonical name from modelNameMap
     };
 
     const modelColors = {
@@ -252,6 +256,7 @@
         "NAM 3km":               "#ec407a"
     };
 
+    // All models fetched from the API in every request
     const FORECAST_MODELS = [
         'best_match', 'gfs_hrrr', 'gfs_graphcast025', 'ecmwf_ifs025',
         'icon_seamless', 'gem_hrdps_continental', 'jma_seamless',
@@ -295,10 +300,12 @@
     const prevRunsLegend        = document.getElementById('previous-runs-legend');
 
     function getModelColor(n) {
+        // Resolve alias first
         const resolved = modelNameAliases[n] || n;
         return modelColors[resolved] || '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6,'0');
     }
 
+    // Resolve a display name through alias map
     function resolveModelName(n) { return modelNameAliases[n] || n; }
 
     function constructURL(location) {
@@ -326,6 +333,7 @@
     function showLoading() { forecastBody.innerHTML = `<tr><td colspan="4" class="loading"><div class="loading-spinner"></div><div>Loading forecast data...</div></td></tr>`; }
     function showNoData() { forecastBody.innerHTML = `<tr><td colspan="4" class="no-data">No forecast data available for this location.</td></tr>`; }
 
+    // ── Fetch main forecast ───────────────────────────────────────────────────
     async function fetchForecast(location) {
         const cached = getCachedForecast(location.city);
         if (cached) return cached;
@@ -349,6 +357,7 @@
         return results;
     }
 
+    // ── Fetch all previous-run highs (days 1–4) for every model ──────────────
     async function fetchPrevRunHighs(location) {
         const dayVars = [1,2,3,4].map(n => `temperature_2m_previous_day${n}`).join(',');
         const url = `https://previous-runs-api.open-meteo.com/v1/forecast`
@@ -385,21 +394,27 @@
         }
     }
 
+    // ── Render table ──────────────────────────────────────────────────────────
     function renderTable(results, unit, location) {
         if (!results.length) { showNoData(); return; }
         const u = unit === 'celsius' ? '°C' : '°F';
+
         let sorted = [...results];
         if (location.modelOrder) {
             sorted.sort((a, b) => {
+                // Resolve aliases so "ECMWF IFS" matches "ECMWF IFS 25km" etc.
                 const ra = resolveModelName(a.model), rb = resolveModelName(b.model);
                 const orderResolved = location.modelOrder.map(resolveModelName);
                 const ia = orderResolved.indexOf(ra), ib = orderResolved.indexOf(rb);
                 return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
             });
         }
+
         forecastBody.innerHTML = sorted.map(result => {
             const isEnabled = enabledModels.has(result.model);
             const rowStyle  = isEnabled ? '' : 'style="opacity:0.4"';
+            const modelDisplay = result.model;
+
             const modelPrevRuns = prevRunsMap[result.model];
             let prevCellContent;
             if (!modelPrevRuns || !Object.keys(modelPrevRuns).length) {
@@ -427,8 +442,9 @@
                     </div>`;
                 }).join('');
             }
+
             return `<tr ${rowStyle}>
-                <td>${result.model}</td>
+                <td>${modelDisplay}</td>
                 <td>${result.high}${u}</td>
                 <td class="prev-runs-cell">${prevCellContent}</td>
                 <td>${result.time}</td>
@@ -436,9 +452,11 @@
         }).join('');
     }
 
+    // ── Render main chart ─────────────────────────────────────────────────────
     function renderChart(results, unit, location) {
         const ctx = document.getElementById('temperature-chart').getContext('2d');
         if (temperatureChart) temperatureChart.destroy();
+
         let sorted = [...results];
         if (location.modelOrder) {
             sorted.sort((a, b) => {
@@ -455,14 +473,16 @@
             if (location.defaultModels ? defaultResolved.includes(resolveModelName(r.model)) : true)
                 enabledModels.add(r.model);
         });
+
         const u = unit === 'celsius' ? '°C' : '°F';
         const datasets = sorted.map(r => {
             const defaultResolved = (location.defaultModels || []).map(resolveModelName);
             const on = location.defaultModels ? defaultResolved.includes(resolveModelName(r.model)) : true;
-            return { label:r.model, r.hourlyData, borderColor:getModelColor(r.model), backgroundColor:getModelColor(r.model)+'20', borderWidth:2, pointRadius:2, pointHoverRadius:5, tension:0.4, fill:false, hidden:!on };
+            return { label:r.model, data:r.hourlyData, borderColor:getModelColor(r.model), backgroundColor:getModelColor(r.model)+'20', borderWidth:2, pointRadius:2, pointHoverRadius:5, tension:0.4, fill:false, hidden:!on };
         });
+
         temperatureChart = new Chart(ctx, {
-            type:'line', { datasets },
+            type:'line', data:{ datasets },
             options:{
                 responsive:true, maintainAspectRatio:false,
                 interaction:{ mode:'index', intersect:false },
@@ -516,24 +536,15 @@
         if (currentChartData && currentLocation) renderTable(currentChartData, currentLocation.unit, currentLocation);
     }
 
-    function generatePolymarketURL(location) {
-        const now    = new Date();
-        const months = ['january','february','march','april','may','june',
-                        'july','august','september','october','november','december'];
-        const citySlug = location.city.toLowerCase().replace(/\s+/g, '-');
-        return `https://polymarket.com/event/highest-temperature-in-${citySlug}-on-`
-             + `${months[now.getMonth()]}-${now.getDate()}-${now.getFullYear()}`;
-    }
-
     function updateInfoBar(location) {
         locationNameEl.textContent    = `${location.city} (${location.icao})`;
         temperatureUnitEl.textContent = location.unit === 'celsius' ? 'Celsius' : 'Fahrenheit';
         lastUpdatedEl.textContent     = new Date().toLocaleTimeString('en-US',{ hour:'2-digit', minute:'2-digit', hour12:true });
         wundergroundLink.href         = location.wunderground;
-        document.getElementById('polymarket-link').href = generatePolymarketURL(location);
         infoBar.style.display         = 'flex';
     }
 
+    // ── Previous Runs chart ───────────────────────────────────────────────────
     async function fetchPreviousRuns(location, modelKey) {
         const vars = PREVIOUS_RUN_DEFS.map(d => d.key).join(',');
         const url  = `https://previous-runs-api.open-meteo.com/v1/forecast`
@@ -553,7 +564,7 @@
                     const ms = new Date(t).getTime();
                     return (ms >= now && ms <= end && temps[i] !== null) ? { x:t, y:temps[i] } : null;
                 }).filter(Boolean);
-                return points.length ? { label:def.label, points } : null;
+                return points.length ? { label:def.label, data:points } : null;
             }).filter(Boolean);
         } catch(e) { console.error('Prev runs chart error:', e); return []; }
     }
@@ -581,10 +592,10 @@
         const u = unit === 'celsius' ? '°C' : '°F';
         const datasets = runs.map((run, i) => {
             const def = PREVIOUS_RUN_DEFS[i] || PREVIOUS_RUN_DEFS[PREVIOUS_RUN_DEFS.length-1];
-            return { label:run.label, run.data, borderColor:def.color, backgroundColor:def.color, borderWidth:def.borderWidth, pointRadius:0, pointHoverRadius:4, tension:0.4, fill:false };
+            return { label:run.label, data:run.data, borderColor:def.color, backgroundColor:def.color, borderWidth:def.borderWidth, pointRadius:0, pointHoverRadius:4, tension:0.4, fill:false };
         });
         previousRunsChart = new Chart(ctx, {
-            type:'line', { datasets },
+            type:'line', data:{ datasets },
             options:{
                 responsive:true, maintainAspectRatio:false,
                 interaction:{ mode:'index', intersect:false },
@@ -614,6 +625,7 @@
         } catch(e) { console.error(e); }
     }
 
+    // ── Main orchestrator ─────────────────────────────────────────────────────
     async function fetchAndDisplay(location) {
         currentLocation = location;
         clearError(); showLoading();
