@@ -117,15 +117,17 @@
         <div class="control-group">
             <label for="location-select">Select Location</label>
             <select id="location-select" aria-label="Location selector">
-                <option value="0">Atlanta (KATL)</option>
-                <option value="1">London (EGLC)</option>
-                <option value="2">Dallas (KDAL)</option>
-                <option value="3">Toronto (CYYZ)</option>
-                <option value="4">Seoul (RKSI)</option>
-                <option value="5">Chicago (KORD)</option>
-                <option value="6">Wellington (NZWN)</option>
-                <option value="7">Buenos Aires (SAEZ)</option>
-                <option value="8">Sao Paulo (SBSP)</option>
+                <option value="0">Paris (LFPG)</option>
+                <option value="1">Atlanta (KATL)</option>
+                <option value="2">London (EGLC)</option>
+                <option value="3">Dallas (KDAL)</option>
+                <option value="4">Toronto (CYYZ)</option>
+                <option value="5">NYC (KLGA)</option>
+                <option value="6">Seoul (RKSI)</option>
+                <option value="7">Chicago (KORD)</option>
+                <option value="8">Wellington (NZWN)</option>
+                <option value="9">Buenos Aires (SAEZ)</option>
+                <option value="10">Sao Paulo (SBSP)</option>
             </select>
         </div>
         <button id="refresh-btn" aria-label="Refresh forecast data">&#128260; Refresh</button>
@@ -194,6 +196,37 @@
         <div class="chart-container"><canvas id="previous-runs-chart"></canvas></div>
     </div>
 
+    <div class="previous-runs-section" id="historical-section">
+        <div class="previous-runs-header">
+            <h2>&#128198; Historical Accuracy (Last 48 Hours)</h2>
+            <p class="subtitle">
+                Compares what previous model runs <em>predicted</em> for each past hour vs what <strong>actually occurred</strong> (white line).<br>
+                <strong>Tight clustering around the white line = model was confident &amp; accurate.</strong>
+            </p>
+            <div class="previous-runs-controls">
+                <label for="historical-model-select">Model:</label>
+                <select id="historical-model-select">
+                    <option value="best_match">Best Match</option>
+                    <option value="gfs_hrrr">HRRR 3km</option>
+                    <option value="gem_hrdps_continental">GEM HRDPS 2.5km</option>
+                    <option value="ecmwf_ifs025">ECMWF IFS 25km</option>
+                    <option value="icon_seamless">ICON Seamless</option>
+                    <option value="ukmo_seamless">UKMO Seamless</option>
+                    <option value="gfs_seamless">GFS Seamless</option>
+                    <option value="meteofrance_seamless">MeteoFrance Seamless</option>
+                    <option value="meteofrance_arpege_world">MeteoFrance Arpege</option>
+                    <option value="knmi_seamless">KNMI Seamless</option>
+                    <option value="kma_seamless">KMA Seamless</option>
+                    <option value="bom_access_global">BOM ACCESS-G</option>
+                    <option value="jma_seamless">JMA Seamless</option>
+                    <option value="gfs_graphcast025">GraphCast AI</option>
+                </select>
+            </div>
+            <div class="legend-row" id="historical-legend"></div>
+        </div>
+        <div class="chart-container"><canvas id="historical-chart"></canvas></div>
+    </div>
+
     <footer>
         <p>Data from <a href="https://open-meteo.com" target="_blank" rel="noopener noreferrer">Open-Meteo API</a> &bull; Polymarket resolves via <a href="https://www.wunderground.com" target="_blank" rel="noopener noreferrer">Weather Underground</a></p>
         <p style="margin-top:10px;font-size:12px;">This tool shows model forecasts. Actual resolution depends on Weather Underground historical data.</p>
@@ -203,10 +236,12 @@
 <script>
     // ── Locations (index matches <select> option values) ──────────────────────
     const locations = [
+        { city: "Paris",        icao: "LFPG", lat: 49.017,   lon: 2.594,     unit: "celsius",    wunderground: "https://www.wunderground.com/history/daily/fr/paris/LFPG",                          defaultModels: ["MeteoFrance Seamless", "Best Match"],                       modelOrder: ["MeteoFrance Seamless", "Best Match", "ICON Seamless", "UKMO Seamless", "KNMI Seamless", "ECMWF IFS 25km"] },
         { city: "Atlanta",      icao: "KATL", lat: 33.6367,  lon: -84.4279,  unit: "fahrenheit", wunderground: "https://www.wunderground.com/weather/us/ga/atlanta/KATL",                         defaultModels: ["HRRR 3km", "Best Match"],                                   modelOrder: ["HRRR 3km", "Best Match", "NAM 3km", "GEM HRDPS 2.5km", "ECMWF IFS", "GFS Seamless", "ICON Seamless", "JMA Seamless", "GraphCast AI"] },
         { city: "London",       icao: "EGLC", lat: 51.5053,  lon: 0.0553,    unit: "celsius",    wunderground: "https://www.wunderground.com/weather/gb/london/EGLC",                            defaultModels: ["UKMO Seamless", "Best Match", "MeteoFrance Seamless"],      modelOrder: ["UKMO Seamless", "Best Match", "MeteoFrance Seamless", "ICON Seamless", "KNMI Seamless", "ECMWF IFS 25km", "GFS Seamless", "JMA Seamless", "GraphCast AI"] },
         { city: "Dallas",       icao: "KDAL", lat: 32.8513,  lon: -96.8635,  unit: "fahrenheit", wunderground: "https://www.wunderground.com/weather/us/tx/dallas/KDAL",                         defaultModels: ["HRRR 3km", "Best Match", "NAM 3km"],                        modelOrder: ["HRRR 3km", "Best Match", "NAM 3km", "GEM HRDPS 2.5km", "ECMWF IFS", "GFS Seamless", "ICON Seamless", "JMA Seamless", "GraphCast AI"] },
         { city: "Toronto",      icao: "CYYZ", lat: 43.712,   lon: -79.655,   unit: "celsius",    wunderground: "https://www.wunderground.com/weather/ca/toronto-pearson-international/CYYZ",     defaultModels: ["GEM HRDPS 2.5km", "HRRR 3km"],                             modelOrder: ["GEM HRDPS 2.5km", "HRRR 3km", "Best Match", "ECMWF IFS 25km", "ICON Seamless", "UKMO Seamless", "MeteoFrance Arpege", "JMA Seamless", "GraphCast AI"] },
+        { city: "NYC",          icao: "KLGA", lat: 40.761,   lon: -73.864,   unit: "fahrenheit", wunderground: "https://www.wunderground.com/history/daily/us/ny/new-york-city/KLGA",            defaultModels: ["HRRR 3km", "Best Match"],                                   modelOrder: ["HRRR 3km", "Best Match", "NAM 3km", "GEM HRDPS 2.5km"] },
         { city: "Seoul",        icao: "RKSI", lat: 37.4692,  lon: 126.4506,  unit: "celsius",    wunderground: "https://www.wunderground.com/weather/kr/incheon/RKSI",                           defaultModels: ["KMA Seamless", "Best Match"],                               modelOrder: ["KMA Seamless", "Best Match", "JMA Seamless", "ICON Seamless", "ECMWF IFS", "GFS Seamless", "MeteoFrance Arpege", "BOM ACCESS-G", "GraphCast AI"] },
         { city: "Chicago",      icao: "KORD", lat: 41.9769,  lon: -87.9082,  unit: "fahrenheit", wunderground: "https://www.wunderground.com/weather/us/il/chicago/KORD",                        defaultModels: ["HRRR 3km", "Best Match", "GEM HRDPS 2.5km", "NAM 3km"],    modelOrder: ["HRRR 3km", "Best Match", "GEM HRDPS 2.5km", "NAM 3km", "ECMWF IFS", "GFS Seamless", "ICON Seamless", "JMA Seamless", "GraphCast AI"] },
         { city: "Wellington",   icao: "NZWN", lat: -41.323,  lon: 174.8032,  unit: "celsius",    wunderground: "https://www.wunderground.com/weather/nz/wellington/NZWN",                        defaultModels: ["Best Match", "ECMWF IFS"],                                  modelOrder: ["Best Match", "ECMWF IFS", "BOM ACCESS-G", "ICON Seamless", "UKMO Seamless", "GFS Seamless", "MeteoFrance Arpege", "JMA Seamless", "GraphCast AI"] },
@@ -237,6 +272,13 @@
     const modelNameAliases = {
         "ECMWF IFS": "ECMWF IFS 25km"   // short form → canonical name from modelNameMap
     };
+
+    // Reverse lookup: display name → API key (used to populate comboboxes)
+    const modelKeyMap = {};
+    for (const [key, name] of Object.entries(modelNameMap)) modelKeyMap[name] = key;
+    for (const [alias, canonical] of Object.entries(modelNameAliases)) {
+        if (modelKeyMap[canonical]) modelKeyMap[alias] = modelKeyMap[canonical];
+    }
 
     const modelColors = {
         "Best Match":            "#00bcd4",
@@ -273,6 +315,23 @@
         { key:'temperature_2m_previous_day4',  label:'Run from 96h ago', color:'rgba(255,183,77,0.18)', borderWidth:2 },
     ];
 
+
+    // Historical accuracy chart: past_days=2, forecast_days=0
+    // "temperature_2m" = current model analysis (treated as "actual")
+    // "temperature_2m_previous_dayN" = what run N days ago predicted for those past hours
+    const HISTORICAL_RUN_DEFS = [
+        { key:'temperature_2m',                label:'Actual (analysis)',    color:'rgba(255,255,255,0.95)', borderWidth:3, borderDash:[] },
+        { key:'temperature_2m_previous_day1',  label:'Predicted 24h ago',    color:'rgba(255,183,77,0.80)',  borderWidth:2, borderDash:[6,3] },
+        { key:'temperature_2m_previous_day2',  label:'Predicted 48h ago',    color:'rgba(255,183,77,0.60)',  borderWidth:2, borderDash:[6,3] },
+        { key:'temperature_2m_previous_day3',  label:'Predicted 72h ago',    color:'rgba(255,183,77,0.40)',  borderWidth:2, borderDash:[6,3] },
+        { key:'temperature_2m_previous_day4',  label:'Predicted 96h ago',    color:'rgba(255,183,77,0.22)',  borderWidth:2, borderDash:[6,3] },
+    ];
+
+    // Styling definition for the ERA5 observed line
+    const ACTUAL_WEATHER_DEF = {
+        label:'ERA5 Observed', color:'rgba(80, 220, 140, 1)', borderWidth:3, borderDash:[]
+    };
+
     const PREV_DAY_LABELS = { 1:'24h ago', 2:'48h ago', 3:'72h ago', 4:'96h ago' };
 
     let currentLocation   = null;
@@ -282,6 +341,7 @@
     let currentChartData  = null;
     let enabledModels     = new Set();
     let prevRunsMap       = {};
+    let historicalChart   = null;
 
     const CACHE_DURATION = 5 * 60 * 1000;
 
@@ -298,6 +358,8 @@
     const modelTogglesContainer = document.getElementById('model-toggles');
     const prevRunsModelSelect   = document.getElementById('previous-runs-model-select');
     const prevRunsLegend        = document.getElementById('previous-runs-legend');
+    const historicalModelSelect = document.getElementById('historical-model-select');
+    const historicalLegend      = document.getElementById('historical-legend');
 
     function getModelColor(n) {
         // Resolve alias first
@@ -401,13 +463,14 @@
 
         let sorted = [...results];
         if (location.modelOrder) {
-            sorted.sort((a, b) => {
-                // Resolve aliases so "ECMWF IFS" matches "ECMWF IFS 25km" etc.
-                const ra = resolveModelName(a.model), rb = resolveModelName(b.model);
-                const orderResolved = location.modelOrder.map(resolveModelName);
-                const ia = orderResolved.indexOf(ra), ib = orderResolved.indexOf(rb);
-                return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-            });
+            const orderResolved = location.modelOrder.map(resolveModelName);
+            // Filter: only show models explicitly listed in this city's modelOrder
+            sorted = sorted.filter(r => orderResolved.includes(resolveModelName(r.model)));
+            // Sort by the position defined in modelOrder
+            sorted.sort((a, b) =>
+                orderResolved.indexOf(resolveModelName(a.model)) -
+                orderResolved.indexOf(resolveModelName(b.model))
+            );
         }
 
         forecastBody.innerHTML = sorted.map(result => {
@@ -459,12 +522,13 @@
 
         let sorted = [...results];
         if (location.modelOrder) {
-            sorted.sort((a, b) => {
-                const orderResolved = location.modelOrder.map(resolveModelName);
-                const ia = orderResolved.indexOf(resolveModelName(a.model));
-                const ib = orderResolved.indexOf(resolveModelName(b.model));
-                return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-            });
+            const orderResolved = location.modelOrder.map(resolveModelName);
+            // Mirror table behaviour: only show + sort by modelOrder
+            sorted = sorted.filter(r => orderResolved.includes(resolveModelName(r.model)));
+            sorted.sort((a, b) =>
+                orderResolved.indexOf(resolveModelName(a.model)) -
+                orderResolved.indexOf(resolveModelName(b.model))
+            );
         }
         currentChartData = sorted;
         enabledModels.clear();
@@ -638,10 +702,159 @@
     }
 
     // ── Main orchestrator ─────────────────────────────────────────────────────
+
+    // ── Historical accuracy chart ──────────────────────────────────────────────
+    // Uses previous-runs API with past_days=2, forecast_days=0.
+    // Returns last 48h of data: actual analysis + what each previous run predicted.
+    async function fetchHistoricalRuns(location, modelKey) {
+        const vars = HISTORICAL_RUN_DEFS.map(d => d.key).join(',');
+        const url  = `https://previous-runs-api.open-meteo.com/v1/forecast`
+                   + `?latitude=${location.lat}&longitude=${location.lon}`
+                   + `&hourly=${vars}&temperature_unit=${location.unit}`
+                   + `&timezone=auto&past_days=2&forecast_days=0&models=${modelKey}`;
+        try {
+            const r = await fetch(url);
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            const data = await r.json();
+            if (!data.hourly?.time) return [];
+            return HISTORICAL_RUN_DEFS.map(def => {
+                const temps = data.hourly[def.key];
+                if (!temps) return null;
+                const points = data.hourly.time.map((t, i) =>
+                    temps[i] !== null ? { x:t, y:temps[i] } : null
+                ).filter(Boolean);
+                return points.length ? { label:def.label, data:points } : null;
+            }).filter(Boolean);
+        } catch(e) { console.error('Historical runs error:', e); return []; }
+    }
+
+    function buildHistoricalLegend(runs, defs) {
+        historicalLegend.innerHTML = '';
+        const resolvedDefs = defs || HISTORICAL_RUN_DEFS;
+        runs.forEach((run, i) => {
+            const def  = resolvedDefs[i] || resolvedDefs[resolvedDefs.length-1];
+            const item = document.createElement('span');
+            item.className = 'legend-item'; item.dataset.index = i;
+            item.innerHTML = `<span class="legend-dot" style="background-color:${def.color}"></span>${run.label}`;
+            item.addEventListener('click', () => {
+                if (!historicalChart) return;
+                const meta = historicalChart.getDatasetMeta(i);
+                meta.hidden = !meta.hidden; historicalChart.update();
+                item.classList.toggle('disabled', meta.hidden);
+            });
+            historicalLegend.appendChild(item);
+        });
+    }
+
+    function renderHistoricalChart(runs, unit, defs) {
+        const ctx = document.getElementById('historical-chart').getContext('2d');
+        if (historicalChart) historicalChart.destroy();
+        const u = unit === 'celsius' ? '°C' : '°F';
+        const resolvedDefs = defs || HISTORICAL_RUN_DEFS;
+        const datasets = runs.map((run, i) => {
+            const def = resolvedDefs[i] || resolvedDefs[resolvedDefs.length-1];
+            return {
+                label: run.label, data: run.data,
+                borderColor: def.color, backgroundColor: def.color,
+                borderWidth: def.borderWidth,
+                borderDash: def.borderDash,
+                pointRadius: 0, pointHoverRadius: 4,
+                tension: 0.3, fill: false
+            };
+        });
+        historicalChart = new Chart(ctx, {
+            type:'line', data:{ datasets },
+            options:{
+                responsive:true, maintainAspectRatio:false,
+                interaction:{ mode:'index', intersect:false },
+                plugins:{ legend:{ display:false },
+                    tooltip:{ backgroundColor:'rgba(0,0,0,0.85)', titleColor:'#fff', bodyColor:'#fff', borderColor:'#ffffff', borderWidth:1, displayColors:true, padding:12,
+                        callbacks:{
+                            title: c => new Date(c[0].parsed.x).toLocaleString('en-US',{ month:'short', day:'numeric', hour:'numeric', minute:'2-digit', hour12:true }),
+                            label: c => `${c.dataset.label}: ${c.parsed.y.toFixed(1)}${u}`
+                        }
+                    }
+                },
+                scales:{
+                    x:{ type:'time', time:{ unit:'hour', displayFormats:{ hour:'MMM d ha' }, tooltipFormat:'MMM d, h:mm a' }, grid:{ color:'rgba(255,255,255,0.1)' }, ticks:{ color:'#aaa', maxRotation:0, autoSkip:true, maxTicksLimit:12 } },
+                    y:{ grid:{ color:'rgba(255,255,255,0.1)' }, ticks:{ color:'#aaa', callback:v => v+u } }
+                }
+            }
+        });
+        buildHistoricalLegend(runs, resolvedDefs);
+    }
+
+
+    // Fetches ERA5 reanalysis ("actual" observed weather) from the archive API
+    // for the last 48 hours. Note: ERA5 typically lags ~5 days so recent hours
+    // may be absent — the chart will simply show whatever data is available.
+    async function fetchActualWeather(location) {
+        const now        = new Date();
+        const threeDaysAgo = new Date(now.getTime() - 5 * 24 * 3600 * 1000);
+        const fmt = d => d.toISOString().split('T')[0];
+        const url = `https://archive-api.open-meteo.com/v1/archive`
+                  + `?latitude=${location.lat}&longitude=${location.lon}`
+                  + `&hourly=temperature_2m`
+                  + `&temperature_unit=${location.unit}`
+                  + `&timezone=auto`
+                  + `&start_date=${fmt(threeDaysAgo)}&end_date=${fmt(now)}`;
+        try {
+            const r = await fetch(url);
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            const data = await r.json();
+            if (!data.hourly?.time) return null;
+            // Filter to last 48h only
+            const cutoff = now.getTime() - 48 * 3600 * 1000;
+            const points = data.hourly.time.map((t, i) => {
+                const ms = new Date(t).getTime();
+                return (ms >= cutoff && data.hourly.temperature_2m[i] !== null)
+                    ? { x:t, y:data.hourly.temperature_2m[i] } : null;
+            }).filter(Boolean);
+            return points.length ? { label:'ERA5 Observed', data:points } : null;
+        } catch(e) { console.error('ERA5 fetch error:', e); return null; }
+    }
+
+    async function refreshHistoricalRuns() {
+        if (!currentLocation) return;
+        try {
+            // Fetch ERA5 actual weather and model previous-runs in parallel
+            const [modelRuns, actualRun] = await Promise.all([
+                fetchHistoricalRuns(currentLocation, historicalModelSelect.value),
+                fetchActualWeather(currentLocation)
+            ]);
+            // ERA5 (green) goes first so it renders on top of predictions
+            const allRuns = actualRun ? [actualRun, ...modelRuns] : modelRuns;
+            const allDefs = actualRun ? [ACTUAL_WEATHER_DEF, ...HISTORICAL_RUN_DEFS] : HISTORICAL_RUN_DEFS;
+            if (allRuns.length) renderHistoricalChart(allRuns, currentLocation.unit, allDefs);
+            else historicalLegend.innerHTML = '<span style="color:var(--text-muted);font-size:13px;">No historical data available for this model.</span>';
+        } catch(e) { console.error(e); }
+    }
+
+    // Repopulate both model comboboxes to match current city's modelOrder
+    function updateModelSelects(location) {
+        if (!location.modelOrder) return;
+        [prevRunsModelSelect, historicalModelSelect].forEach(select => {
+            const prev = select.value;
+            select.innerHTML = '';
+            location.modelOrder.forEach(displayName => {
+                const canonical = resolveModelName(displayName);
+                const apiKey    = modelKeyMap[canonical] || modelKeyMap[displayName];
+                if (!apiKey) return;
+                const opt = document.createElement('option');
+                opt.value       = apiKey;
+                opt.textContent = canonical;
+                select.appendChild(opt);
+            });
+            // Keep previous selection if still available, else fall back to first
+            if ([...select.options].some(o => o.value === prev)) select.value = prev;
+        });
+    }
+
     async function fetchAndDisplay(location) {
         currentLocation = location;
         clearError(); showLoading();
         refreshBtn.disabled = true;
+        updateModelSelects(location);
         try {
             const [results, newPrevRunsMap] = await Promise.all([
                 fetchForecast(location),
@@ -652,6 +865,7 @@
             renderTable(results, location.unit, location);
             updateInfoBar(location);
             refreshPreviousRuns();
+            refreshHistoricalRuns();
         } catch(err) {
             displayError('Unable to fetch forecast data. Please check your connection and try again.');
             showNoData();
@@ -664,6 +878,7 @@
     refreshBtn.addEventListener('click', () => { if (currentLocation) { forecastCache.delete(currentLocation.city); fetchAndDisplay(currentLocation); } });
     toggleAllBtn.addEventListener('click', toggleAllModels);
     prevRunsModelSelect.addEventListener('change', refreshPreviousRuns);
+    historicalModelSelect.addEventListener('change', refreshHistoricalRuns);
 
     window.addEventListener('DOMContentLoaded', () => fetchAndDisplay(locations[0]));
 </script>
