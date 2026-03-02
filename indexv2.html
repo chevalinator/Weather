@@ -1,0 +1,1289 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polymarket Temperature Forecast Dashboard V2.2</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <style>
+        :root {
+            --bg-primary:#1a1a1a; --bg-secondary:#2a2a2a; --bg-tertiary:#333333;
+            --text-primary:#ffffff; --text-secondary:#aaaaaa; --text-muted:#666666;
+            --highlight:#ffb74d; --border:#333333; --error:#ff6b6b; --success:#4caf50;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:-apple-system,BlinkMacSystemFont,'Inter','Roboto','Segoe UI',Arial,sans-serif; background-color:var(--bg-primary); color:var(--text-primary); padding:20px; line-height:1.6; }
+        .container { max-width:1200px; margin:0 auto; }
+        header { text-align:center; margin-bottom:40px; }
+        h1 { font-size:28px; font-weight:700; margin-bottom:10px; }
+        .subtitle { font-size:14px; color:var(--text-secondary); }
+        .controls { background-color:var(--bg-secondary); padding:20px; border-radius:8px; margin-bottom:30px; display:flex; flex-wrap:wrap; gap:15px; align-items:center; }
+        .control-group { display:flex; flex-direction:column; gap:8px; flex:1; min-width:200px; }
+        label { font-size:13px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; }
+        select { padding:12px 16px; font-size:15px; background-color:var(--bg-tertiary); color:var(--text-primary); border:1px solid var(--border); border-radius:6px; cursor:pointer; outline:none; transition:all 0.2s ease; }
+        select:hover { border-color:var(--highlight); }
+        select:focus { border-color:var(--highlight); box-shadow:0 0 0 3px rgba(255,183,77,0.2); }
+        button { padding:12px 24px; font-size:14px; font-weight:600; background-color:var(--highlight); color:var(--bg-primary); border:none; border-radius:6px; cursor:pointer; transition:all 0.2s ease; align-self:flex-end; }
+        button:hover { background-color:#ffa726; transform:translateY(-1px); }
+        button:active { transform:translateY(0); }
+        button:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+        .info-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; padding:12px 16px; background-color:var(--bg-secondary); border-radius:6px; font-size:13px; }
+        .info-bar .left { color:var(--text-secondary); }
+        .info-bar .right { color:var(--text-muted); }
+        .wunderground-link { color:var(--highlight); text-decoration:none; font-weight:600; }
+        .wunderground-link:hover { text-decoration:underline; }
+        .table-container { background-color:var(--bg-secondary); border-radius:8px; overflow:hidden; box-shadow:0 4px 6px rgba(0,0,0,0.3); margin-bottom:30px; }
+        table { width:100%; border-collapse:collapse; }
+        thead { background-color:var(--bg-tertiary); }
+        th { padding:14px 16px; text-align:left; font-size:12px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; border-bottom:2px solid var(--border); }
+        tbody tr { border-bottom:1px solid var(--border); transition:background-color 0.2s ease; }
+        tbody tr:hover { background-color:rgba(255,183,77,0.05); }
+        tbody tr:last-child { border-bottom:none; }
+        td { padding:12px 16px; font-size:15px; vertical-align:top; }
+        td:first-child { font-weight:600; color:var(--text-primary); }
+        td:nth-child(2) { font-weight:700; font-size:18px; color:var(--highlight); white-space:nowrap; }
+        td:last-child { font-family:'Courier New',monospace; font-size:13px; color:var(--text-secondary); white-space:nowrap; }
+        .prev-runs-cell { min-width:160px; }
+        .prev-run-row { display:flex; align-items:baseline; gap:5px; padding:2px 0; font-size:12px; line-height:1.4; }
+        .prev-run-label { color:var(--text-muted); min-width:46px; flex-shrink:0; }
+        .prev-run-val { color:var(--text-secondary); font-weight:600; }
+        .prev-run-trend { font-weight:700; font-size:11px; }
+        .prev-run-trend.up   { color:#ff6b6b; }
+        .prev-run-trend.down { color:#4fc3f7; }
+        .prev-run-trend.flat { color:var(--text-muted); }
+        .prev-run-diff { color:var(--text-muted); font-size:11px; }
+        .prev-runs-none { color:var(--text-muted); font-size:12px; }
+        .model-link { color:var(--text-primary); text-decoration:none; transition:color 0.2s ease; }
+        .model-link:hover { color:var(--highlight); text-decoration:underline; }
+        .graph-section { background-color:var(--bg-secondary); border-radius:8px; padding:20px; margin-bottom:30px; }
+        .graph-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:15px; }
+        .graph-header h2 { font-size:20px; font-weight:600; color:var(--text-primary); margin:0; }
+        .graph-controls { display:flex; gap:10px; }
+        .graph-controls button { padding:8px 16px; font-size:13px; background-color:var(--bg-tertiary); color:var(--text-primary); border:1px solid var(--border); }
+        .graph-controls button:hover { background-color:var(--highlight); color:var(--bg-primary); border-color:var(--highlight); }
+        .chart-container { position:relative; height:400px; margin-bottom:20px; }
+        .model-toggles { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; padding-top:20px; border-top:1px solid var(--border); }
+        .model-toggle-item { display:flex; align-items:center; gap:8px; }
+        .model-toggle-item input[type="checkbox"] { width:18px; height:18px; cursor:pointer; accent-color:var(--highlight); }
+        .model-toggle-item label { display:flex; align-items:center; gap:8px; cursor:pointer; font-size:14px; color:var(--text-secondary); user-select:none; transition:color 0.2s ease; }
+        .model-toggle-item label:hover { color:var(--text-primary); }
+        .color-indicator { width:24px; height:3px; border-radius:2px; display:inline-block; }
+        .loading { text-align:center; padding:60px 20px; color:var(--text-secondary); }
+        .loading-spinner { display:inline-block; width:40px; height:40px; border:4px solid var(--bg-tertiary); border-top-color:var(--highlight); border-radius:50%; animation:spin 1s linear infinite; margin-bottom:20px; }
+        @keyframes spin { to { transform:rotate(360deg); } }
+        .error { background-color:rgba(255,107,107,0.1); border-left:4px solid var(--error); padding:20px; border-radius:6px; margin-bottom:20px; }
+        .error-title { font-weight:700; margin-bottom:8px; color:var(--error); }
+        .error-message { color:var(--text-secondary); font-size:14px; }
+        .no-data { text-align:center; padding:60px 20px; color:var(--text-secondary); }
+        .previous-runs-section { background-color:var(--bg-secondary); border-radius:8px; padding:20px; margin-bottom:30px; }
+        .previous-runs-header { margin-bottom:15px; }
+        .previous-runs-header h2 { font-size:20px; font-weight:600; color:var(--text-primary); margin-bottom:8px; }
+        .previous-runs-header .subtitle { font-size:13px; color:var(--text-secondary); line-height:1.5; }
+        .previous-runs-controls { display:flex; align-items:center; gap:12px; margin-top:12px; margin-bottom:12px; flex-wrap:wrap; }
+        .previous-runs-controls label { font-size:13px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; white-space:nowrap; }
+        .previous-runs-controls select { padding:6px 12px; font-size:13px; background-color:var(--bg-tertiary); color:var(--text-primary); border:1px solid var(--border); border-radius:6px; cursor:pointer; }
+        .legend-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+        .legend-item { display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:20px; font-size:12px; color:var(--text-secondary); background-color:var(--bg-tertiary); border:1px solid var(--border); cursor:pointer; transition:all 0.2s ease; user-select:none; }
+        .legend-item:hover { border-color:var(--highlight); color:var(--text-primary); }
+        .legend-item.disabled { opacity:0.35; border-color:var(--border); }
+        .legend-item.disabled .legend-dot { background-color:#555 !important; }
+        .legend-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+        footer { margin-top:60px; padding-top:30px; border-top:1px solid var(--border); text-align:center; color:var(--text-muted); font-size:13px; }
+        footer a { color:var(--highlight); text-decoration:none; }
+        footer a:hover { text-decoration:underline; }
+        #toggle-sigma-bands.active { background: rgba(250,204,21,0.2); border-color: #faca15; color: #faca15; }
+        #toggle-sigma-bands.active { background:rgba(250,204,21,0.15); border-color:#faca15; color:#faca15; }
+        .hist-model-toggles { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+        .hist-model-btn {
+            padding:4px 12px; border-radius:14px; font-size:11px; font-weight:600;
+            cursor:pointer; border:2px solid; background:transparent;
+            color:#aaa; transition:all 0.2s; white-space:nowrap;
+        }
+        .hist-model-btn.active { color:#fff; background:rgba(255,255,255,0.12); }
+
+        @media (max-width:768px) {
+            body { padding:10px; } h1 { font-size:22px; }
+            .controls { flex-direction:column; } .control-group { width:100%; min-width:auto; }
+            button { width:100%; align-self:stretch; }
+            /* Horizontal scroll so no column is ever cut off */
+            .table-container { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+            table { min-width:480px; }
+            th { padding:8px 8px; font-size:10px; }
+            td { padding:8px 8px; font-size:12px; }
+            td:nth-child(2) { font-size:14px; }
+            td:last-child { font-size:11px; }
+            .prev-runs-cell { min-width:120px; }
+            .prev-run-row { font-size:11px; }
+            .info-bar { flex-direction:column; gap:10px; text-align:center; }
+            .chart-container { height:300px; }
+            .graph-header { flex-direction:column; align-items:flex-start; }
+            .graph-controls { width:100%; } .graph-controls button { flex:1; }
+            .model-toggles { grid-template-columns:1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>&#9925; Polymarket Temperature Forecast Dashboard V2.2</h1>
+        <p class="subtitle">Compare weather model forecasts for betting decision support</p>
+    </header>
+
+    <div class="controls">
+        <div class="control-group">
+            <label for="location-select">Select Location</label>
+            <select id="location-select" aria-label="Location selector">
+                <option value="0">Paris (LFPG)</option>
+                <option value="1">Atlanta (KATL)</option>
+                <option value="2">London (EGLC)</option>
+                <option value="3">Dallas (KDAL)</option>
+                <option value="4">Toronto (CYYZ)</option>
+                <option value="5">NYC (KLGA)</option>
+                <option value="6">Seoul (RKSI)</option>
+                <option value="7">Chicago (KORD)</option>
+                <option value="8">Wellington (NZWN)</option>
+                <option value="9">Buenos Aires (SAEZ)</option>
+                <option value="10">Sao Paulo (SBSP)</option>
+            </select>
+        </div>
+        <button id="refresh-btn" aria-label="Refresh forecast data">&#128260; Refresh</button>
+    </div>
+
+    <div id="info-bar" class="info-bar" style="display:none;">
+        <div class="left"><strong id="location-name"></strong> &bull; <span id="temperature-unit"></span></div>
+        <div class="right">Last updated: <span id="last-updated"></span> &bull; <a id="wunderground-link" href="#" target="_blank" rel="noopener noreferrer" class="wunderground-link">Weather Underground</a> &bull; <a id="polymarket-link" href="#" target="_blank" rel="noopener noreferrer" class="wunderground-link">&#127920; Polymarket</a></div>
+    </div>
+
+    <div id="error-container"></div>
+
+    <div class="table-container">
+        <table role="table" aria-label="Weather forecast comparison">
+            <thead>
+                <tr>
+                    <th scope="col">Model</th>
+                    <th scope="col">Current High</th>
+                    <th scope="col">Previous Runs High</th>
+                    <th scope="col">Peak Time</th>
+                    <th scope="col" title="Mean Error: model bias on daily highs (+ = overshoots)">Bias (ME)</th>
+                    <th scope="col" title="Daily High RMSE over last 5 days">RMSE</th>
+                    <th scope="col" title="Bias-corrected forecast target for tomorrow">Target ✱</th>
+                    <th scope="col" title="95.4% confidence band (±2σ)">2σ Range</th>
+                    <th scope="col" title="99.7% confidence band (±3σ)">3σ Range</th>
+                </tr>
+            </thead>
+            <tbody id="forecast-body">
+                <tr><td colspan="4" class="loading"><div class="loading-spinner"></div><div>Loading forecast data...</div></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="graph-section">
+        <div class="graph-header">
+            <h2>&#128202; 24-Hour Temperature Forecast</h2>
+            <div class="graph-controls"><button id="toggle-sigma-bands" title="Overlay bias-corrected targets and ±2σ/±3σ confidence bands">σ Bands</button><button id="toggle-all-models">Toggle All</button></div>
+        </div>
+        <div class="chart-container"><canvas id="temperature-chart"></canvas></div>
+        <div class="model-toggles" id="model-toggles"></div>
+    </div>
+
+    <div class="previous-runs-section">
+        <div class="previous-runs-header">
+            <h2>&#128200; Previous Runs (Time-Lagged Ensemble)</h2>
+            <p class="subtitle">
+                Shows how the forecast for the upcoming 24 hours has evolved over previous model runs.<br>
+                <strong>Consistent lines = High Confidence. Widely varying lines = High Uncertainty.</strong>
+            </p>
+            <div class="previous-runs-controls">
+                <label for="previous-runs-model-select">Model:</label>
+                <select id="previous-runs-model-select">
+                    <option value="best_match">Best Match</option>
+                    <option value="gfs_hrrr">HRRR 3km</option>
+                    <option value="gem_hrdps_continental">GEM HRDPS 2.5km</option>
+                    <option value="ecmwf_ifs025">ECMWF IFS 25km</option>
+                    <option value="icon_seamless">ICON Seamless</option>
+                    <option value="ukmo_seamless">UKMO Seamless</option>
+                    <option value="gfs_seamless">GFS Seamless</option>
+                    <option value="meteofrance_seamless">MeteoFrance Seamless</option>
+                    <option value="meteofrance_arpege_world">MeteoFrance Arpege</option>
+                    <option value="knmi_seamless">KNMI Seamless</option>
+                    <option value="kma_seamless">KMA Seamless</option>
+                    <option value="bom_access_global">BOM ACCESS-G</option>
+                    <option value="jma_seamless">JMA Seamless</option>
+                    <option value="gfs_graphcast025">GraphCast AI</option>
+                </select>
+            </div>
+            <div class="legend-row" id="previous-runs-legend"></div>
+        </div>
+        <div class="chart-container"><canvas id="previous-runs-chart"></canvas></div>
+    </div>
+
+    <div class="previous-runs-section" id="historical-section">
+        <div class="previous-runs-header">
+            <h2>&#128198; Historical Accuracy (Last 48 Hours)</h2>
+            <p class="subtitle">
+                Compares what previous model runs <em>predicted</em> for each past hour vs real <strong>METAR observations</strong> (green line) from the airport.<br>
+                <strong>Tight clustering around the green line = model was confident &amp; accurate.</strong>
+            </p>
+            <div class="previous-runs-controls">
+                <span class="control-label" style="font-size:11px;color:#888;letter-spacing:.05em">MODELS:</span>
+                <div id="historical-model-toggles" class="hist-model-toggles"></div>
+            </div>
+            <div class="legend-row" id="historical-legend"></div>
+        </div>
+        <div class="chart-container"><canvas id="historical-chart"></canvas></div>
+    </div>
+
+    <footer>
+        <p>Data from <a href="https://open-meteo.com" target="_blank" rel="noopener noreferrer">Open-Meteo API</a> &bull; Polymarket resolves via <a href="https://www.wunderground.com" target="_blank" rel="noopener noreferrer">Weather Underground</a></p>
+        <p style="margin-top:10px;font-size:12px;">This tool shows model forecasts. Actual resolution depends on Weather Underground historical data.</p>
+    </footer>
+</div>
+
+<script>
+    // ── Locations (index matches <select> option values) ──────────────────────
+    const locations = [
+        { city: "Paris",        icao: "LFPG", lat: 49.017,   lon: 2.594,     unit: "celsius",    wunderground: "https://www.wunderground.com/history/daily/fr/paris/LFPG",                          defaultModels: ["MeteoFrance Seamless", "Best Match"],                       modelOrder: ["MeteoFrance Seamless", "Best Match", "ICON Seamless", "UKMO Seamless", "KNMI Seamless", "ECMWF IFS 25km"] },
+        { city: "Atlanta",      icao: "KATL", lat: 33.6367,  lon: -84.4279,  unit: "fahrenheit", wunderground: "https://www.wunderground.com/weather/us/ga/atlanta/KATL",                         defaultModels: ["HRRR 3km", "Best Match"],                                   modelOrder: ["HRRR 3km", "Best Match", "NAM 3km", "GEM HRDPS 2.5km", "ECMWF IFS", "GFS Seamless", "ICON Seamless", "JMA Seamless", "GraphCast AI"] },
+        { city: "London",       icao: "EGLC", lat: 51.5053,  lon: 0.0553,    unit: "celsius",    wunderground: "https://www.wunderground.com/weather/gb/london/EGLC",                            defaultModels: ["UKMO Seamless", "Best Match", "MeteoFrance Seamless"],      modelOrder: ["UKMO Seamless", "Best Match", "MeteoFrance Seamless", "ICON Seamless", "KNMI Seamless", "ECMWF IFS 25km", "GFS Seamless", "JMA Seamless", "GraphCast AI"] },
+        { city: "Dallas",       icao: "KDAL", lat: 32.8513,  lon: -96.8635,  unit: "fahrenheit", wunderground: "https://www.wunderground.com/weather/us/tx/dallas/KDAL",                         defaultModels: ["HRRR 3km", "Best Match", "NAM 3km"],                        modelOrder: ["HRRR 3km", "Best Match", "NAM 3km", "GEM HRDPS 2.5km", "ECMWF IFS", "GFS Seamless", "ICON Seamless", "JMA Seamless", "GraphCast AI"] },
+        { city: "Toronto",      icao: "CYYZ", lat: 43.712,   lon: -79.655,   unit: "celsius",    wunderground: "https://www.wunderground.com/weather/ca/toronto-pearson-international/CYYZ",     defaultModels: ["GEM HRDPS 2.5km", "HRRR 3km"],                             modelOrder: ["GEM HRDPS 2.5km", "HRRR 3km", "Best Match", "ECMWF IFS 25km", "ICON Seamless", "UKMO Seamless", "MeteoFrance Arpege", "JMA Seamless", "GraphCast AI"] },
+        { city: "NYC",          icao: "KLGA", lat: 40.761,   lon: -73.864,   unit: "fahrenheit", wunderground: "https://www.wunderground.com/history/daily/us/ny/new-york-city/KLGA",            defaultModels: ["HRRR 3km", "Best Match"],                                   modelOrder: ["HRRR 3km", "Best Match", "NAM 3km", "GEM HRDPS 2.5km"] },
+        { city: "Seoul",        icao: "RKSI", lat: 37.4692,  lon: 126.4506,  unit: "celsius",    wunderground: "https://www.wunderground.com/weather/kr/incheon/RKSI",                           defaultModels: ["KMA Seamless", "Best Match"],                               modelOrder: ["KMA Seamless", "Best Match", "JMA Seamless", "ICON Seamless", "ECMWF IFS", "GFS Seamless", "MeteoFrance Arpege", "BOM ACCESS-G", "GraphCast AI"] },
+        { city: "Chicago",      icao: "KORD", lat: 41.9769,  lon: -87.9082,  unit: "fahrenheit", wunderground: "https://www.wunderground.com/weather/us/il/chicago/KORD",                        defaultModels: ["HRRR 3km", "Best Match", "GEM HRDPS 2.5km", "NAM 3km"],    modelOrder: ["HRRR 3km", "Best Match", "GEM HRDPS 2.5km", "NAM 3km", "ECMWF IFS", "GFS Seamless", "ICON Seamless", "JMA Seamless", "GraphCast AI"] },
+        { city: "Wellington",   icao: "NZWN", lat: -41.323,  lon: 174.8032,  unit: "celsius",    wunderground: "https://www.wunderground.com/weather/nz/wellington/NZWN",                        defaultModels: ["Best Match", "ECMWF IFS"],                                  modelOrder: ["Best Match", "ECMWF IFS", "BOM ACCESS-G", "ICON Seamless", "UKMO Seamless", "GFS Seamless", "MeteoFrance Arpege", "JMA Seamless", "GraphCast AI"] },
+        { city: "Buenos Aires", icao: "SAEZ", lat: -34.8222, lon: -58.5358,  unit: "celsius",    wunderground: "https://www.wunderground.com/weather/ar/ezeiza/SAEZ",                            defaultModels: ["Best Match", "ECMWF IFS"],                                  modelOrder: ["Best Match", "ECMWF IFS", "ICON Seamless", "UKMO Seamless", "BOM ACCESS-G", "GFS Seamless", "MeteoFrance Arpege", "JMA Seamless", "GraphCast AI"] },
+        { city: "Sao Paulo",    icao: "SBSP", lat: -23.6261, lon: -46.6564,  unit: "celsius",    wunderground: "https://www.wunderground.com/weather/br/sao-paulo/SBSP",                         defaultModels: ["Best Match", "ECMWF IFS"],                                  modelOrder: ["Best Match", "ECMWF IFS", "ICON Seamless", "UKMO Seamless", "BOM ACCESS-G", "GFS Seamless", "MeteoFrance Arpege", "JMA Seamless", "GraphCast AI"] }
+    ];
+
+    // ── Model API key → display name ──────────────────────────────────────────
+    const modelNameMap = {
+        "best_match":                "Best Match",
+        "gfs_hrrr":                  "HRRR 3km",
+        "gfs_graphcast025":          "GraphCast AI",
+        "ecmwf_ifs025":              "ECMWF IFS 25km",
+        "icon_seamless":             "ICON Seamless",
+        "gem_hrdps_continental":     "GEM HRDPS 2.5km",
+        "jma_seamless":              "JMA Seamless",
+        "meteofrance_arpege_world":  "MeteoFrance Arpege",
+        "ukmo_seamless":             "UKMO Seamless",
+        "gfs_seamless":              "GFS Seamless",
+        "meteofrance_seamless":      "MeteoFrance Seamless",
+        "knmi_seamless":             "KNMI Seamless",
+        "kma_seamless":              "KMA Seamless",
+        "bom_access_global":         "BOM ACCESS-G"
+    };
+
+    // modelOrder alias: some locations use "ECMWF IFS" (short), others "ECMWF IFS 25km"
+    // We normalise display names at render time using this alias map
+    const modelNameAliases = {
+        "ECMWF IFS": "ECMWF IFS 25km"   // short form → canonical name from modelNameMap
+    };
+
+    // Reverse lookup: display name → API key (used to populate comboboxes)
+    const modelKeyMap = {};
+    for (const [key, name] of Object.entries(modelNameMap)) modelKeyMap[name] = key;
+    for (const [alias, canonical] of Object.entries(modelNameAliases)) {
+        if (modelKeyMap[canonical]) modelKeyMap[alias] = modelKeyMap[canonical];
+    }
+
+    const modelColors = {
+        "Best Match":            "#00bcd4",
+        "HRRR 3km":              "#ff5722",
+        "GraphCast AI":          "#4caf50",
+        "ECMWF IFS 25km":        "#9c27b0",
+        "ICON Seamless":         "#00e676",
+        "GEM HRDPS 2.5km":       "#ffc107",
+        "JMA Seamless":          "#e91e63",
+        "MeteoFrance Arpege":    "#f57c00",
+        "UKMO Seamless":         "#ff9800",
+        "GFS Seamless":          "#26c6da",
+        "MeteoFrance Seamless":  "#ef5350",
+        "KNMI Seamless":         "#ab47bc",
+        "KMA Seamless":          "#66bb6a",
+        "BOM ACCESS-G":          "#8d6e63",
+        "NAM 3km":               "#ec407a"
+    };
+
+    // All models fetched from the API in every request
+    const FORECAST_MODELS = [
+        'best_match', 'gfs_hrrr', 'gfs_graphcast025', 'ecmwf_ifs025',
+        'icon_seamless', 'gem_hrdps_continental', 'jma_seamless',
+        'meteofrance_arpege_world', 'ukmo_seamless',
+        'gfs_seamless', 'meteofrance_seamless', 'knmi_seamless',
+        'kma_seamless', 'bom_access_global'
+    ];
+
+    const PREVIOUS_RUN_DEFS = [
+        { key:'temperature_2m',                label:'Current Run',      color:'rgba(255,183,77,1)',    borderWidth:3 },
+        { key:'temperature_2m_previous_day1',  label:'Run from 24h ago', color:'rgba(255,183,77,0.75)', borderWidth:2 },
+        { key:'temperature_2m_previous_day2',  label:'Run from 48h ago', color:'rgba(255,183,77,0.55)', borderWidth:2 },
+        { key:'temperature_2m_previous_day3',  label:'Run from 72h ago', color:'rgba(255,183,77,0.35)', borderWidth:2 },
+        { key:'temperature_2m_previous_day4',  label:'Run from 96h ago', color:'rgba(255,183,77,0.18)', borderWidth:2 },
+    ];
+
+
+    // Historical accuracy chart: past_days=2, forecast_days=0
+    // "temperature_2m" = current model analysis (treated as "actual")
+    // "temperature_2m_previous_dayN" = what run N days ago predicted for those past hours
+    const HISTORICAL_RUN_DEFS = [
+        { key:'temperature_2m',                label:'Actual (analysis)',    color:'rgba(255,255,255,0.95)', borderWidth:3, borderDash:[] },
+        { key:'temperature_2m_previous_day1',  label:'Predicted 24h ago',    color:'rgba(255,183,77,0.80)',  borderWidth:2, borderDash:[6,3] },
+        { key:'temperature_2m_previous_day2',  label:'Predicted 48h ago',    color:'rgba(255,183,77,0.60)',  borderWidth:2, borderDash:[6,3] },
+        { key:'temperature_2m_previous_day3',  label:'Predicted 72h ago',    color:'rgba(255,183,77,0.40)',  borderWidth:2, borderDash:[6,3] },
+        { key:'temperature_2m_previous_day4',  label:'Predicted 96h ago',    color:'rgba(255,183,77,0.22)',  borderWidth:2, borderDash:[6,3] },
+    ];
+
+    // Styling definition for the ERA5 observed line
+    const ACTUAL_WEATHER_DEF = {
+        label:'METAR Observed', color:'rgba(255,255,255,0.95)', borderWidth:3, borderDash:[]
+    };
+
+    const HIST_MODEL_PALETTE = [
+        [255, 183,  77],  // amber  (model 0)
+        [ 92, 159, 255],  // blue
+        [167, 119, 255],  // purple
+        [255, 119, 191],  // pink
+        [ 56, 222, 222],  // cyan
+        [ 72, 222, 150],  // emerald
+        [255, 140,  80],  // orange
+        [255, 100, 100],  // red
+    ];
+
+    const PREV_DAY_LABELS = { 1:'24h ago', 2:'48h ago', 3:'72h ago', 4:'96h ago' };
+
+    let currentLocation   = null;
+    let forecastCache     = new Map();
+    let temperatureChart  = null;
+    let previousRunsChart = null;
+    let currentChartData  = null;
+    let enabledModels     = new Set();
+    let prevRunsMap       = {};
+    let modelRmseCache    = {};   // apiKey → hourly RMSE (legacy, historical chart)
+    let modelStatsCache   = {};   // apiKey → full DailyHighStats object
+    let historicalChart   = null;
+
+    const CACHE_DURATION = 5 * 60 * 1000;
+
+    const locationSelect        = document.getElementById('location-select');
+    const refreshBtn            = document.getElementById('refresh-btn');
+    const forecastBody          = document.getElementById('forecast-body');
+    const errorContainer        = document.getElementById('error-container');
+    const infoBar               = document.getElementById('info-bar');
+    const locationNameEl        = document.getElementById('location-name');
+    const temperatureUnitEl     = document.getElementById('temperature-unit');
+    const lastUpdatedEl         = document.getElementById('last-updated');
+    const wundergroundLink      = document.getElementById('wunderground-link');
+    const toggleAllBtn          = document.getElementById('toggle-all-models');
+    const sigmaBandsBtn   = document.getElementById('toggle-sigma-bands');
+    const modelTogglesContainer = document.getElementById('model-toggles');
+    const prevRunsModelSelect   = document.getElementById('previous-runs-model-select');
+    const prevRunsLegend        = document.getElementById('previous-runs-legend');
+    const historicalModelToggles = document.getElementById('historical-model-toggles');
+    const historicalLegend      = document.getElementById('historical-legend');
+
+    function getModelColor(n) {
+        // Resolve alias first
+        const resolved = modelNameAliases[n] || n;
+        return modelColors[resolved] || '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6,'0');
+    }
+
+    // Resolve a display name through alias map
+    function resolveModelName(n) { return modelNameAliases[n] || n; }
+
+    // Formats an ISO timestamp to compact display without the year
+    // e.g. "2026-02-28T14:00" → "Feb 28, 2:00 PM"
+    function formatTime(isoStr) {
+        const d = new Date(isoStr);
+        return d.toLocaleString('en-US', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit', hour12:true });
+    }
+
+    // Computes RMSE between model analysis points and METAR observed points.
+    // Points are matched by UTC hour timestamp. Returns null if <3 overlapping hours.
+    function computeRMSE(analysisPoints, metarPoints) {
+        if (!metarPoints?.length || !analysisPoints?.length) return null;
+        const metarMap = new Map(metarPoints.map(p => [new Date(p.x).getTime(), p.y]));
+        let sumSq = 0, n = 0;
+        analysisPoints.forEach(p => {
+            const metarY = metarMap.get(new Date(p.x).getTime());
+            if (metarY !== undefined) { sumSq += (p.y - metarY) ** 2; n++; }
+        });
+        return n >= 3 ? Math.sqrt(sumSq / n) : null;
+    }
+
+    // Wraps a model name in a link for models that have an external reference.
+    // URL is built dynamically from the current location's coordinates.
+    function formatModelName(modelName, location) {
+        if (modelName === 'GEM HRDPS 2.5km') {
+            const url = `https://weather.gc.ca/en/forecast/hourly/index.html?coords=${location.lat},${location.lon}`;
+            return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="model-link">${modelName}</a>`;
+        }
+        return modelName;
+    }
+
+    function constructURL(location) {
+        const params = new URLSearchParams({
+            latitude: location.lat, longitude: location.lon,
+            hourly: 'temperature_2m', temperature_unit: location.unit,
+            timezone: 'auto', forecast_hours: 24, models: FORECAST_MODELS.join(',')
+        });
+        return 'https://api.open-meteo.com/v1/forecast?' + params;
+    }
+
+    function extractModelName(apiKey) {
+        const k = apiKey.replace('temperature_2m_', '');
+        return modelNameMap[k] || k.toUpperCase();
+    }
+
+    function getCachedForecast(city) {
+        const c = forecastCache.get(city);
+        return (c && Date.now() - c.timestamp < CACHE_DURATION) ? c.data : null;
+    }
+    function setCachedForecast(city, data) { forecastCache.set(city, { data, timestamp: Date.now() }); }
+
+    function displayError(msg) { errorContainer.innerHTML = `<div class="error"><div class="error-title">&#9888; Error</div><div class="error-message">${msg}</div></div>`; }
+    function clearError() { errorContainer.innerHTML = ''; }
+    function showLoading() { forecastBody.innerHTML = `<tr><td colspan="4" class="loading"><div class="loading-spinner"></div><div>Loading forecast data...</div></td></tr>`; }
+    function showNoData() { forecastBody.innerHTML = `<tr><td colspan="4" class="no-data">No forecast data available for this location.</td></tr>`; }
+
+    // ── Fetch main forecast ───────────────────────────────────────────────────
+    async function fetchForecast(location) {
+        const cached = getCachedForecast(location.city);
+        if (cached) return cached;
+        const r = await fetch(constructURL(location));
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const data = await r.json();
+        const results = [];
+        for (const key in data.hourly) {
+            if (key === 'time') continue;
+            const temps = data.hourly[key];
+            if (temps.every(t => t === null)) continue;
+            const valid = temps.filter(t => t !== null);
+            if (!valid.length) continue;
+            const maxTemp = Math.max(...valid);
+            const maxIdx  = temps.indexOf(maxTemp);
+            const hourlyData = data.hourly.time.map((t, i) => ({ x:t, y:temps[i] })).filter(p => p.y !== null);
+            results.push({ model: extractModelName(key), high: maxTemp.toFixed(1), time: data.hourly.time[maxIdx], hourlyData });
+        }
+        results.sort((a, b) => parseFloat(b.high) - parseFloat(a.high));
+        setCachedForecast(location.city, results);
+        return results;
+    }
+
+    // ── Fetch all previous-run highs (days 1–4) for every model ──────────────
+    async function fetchPrevRunHighs(location) {
+        const dayVars = [1,2,3,4].map(n => `temperature_2m_previous_day${n}`).join(',');
+        const url = `https://previous-runs-api.open-meteo.com/v1/forecast`
+                  + `?latitude=${location.lat}&longitude=${location.lon}`
+                  + `&hourly=${dayVars}&temperature_unit=${location.unit}`
+                  + `&timezone=auto&forecast_days=2&models=${FORECAST_MODELS.join(',')}`;
+        try {
+            const r = await fetch(url);
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            const data = await r.json();
+            if (!data.hourly) return {};
+            const now = Date.now(), windowEnd = now + 24 * 3600 * 1000;
+            const result = {};
+            for (const key in data.hourly) {
+                if (key === 'time') continue;
+                const match = key.match(/^temperature_2m_previous_day(\d+)(?:_(.+))?$/);
+                if (!match) continue;
+                const dayNum    = parseInt(match[1]);
+                const modelKey  = match[2] || FORECAST_MODELS[0];
+                const modelName = modelNameMap[modelKey] || modelKey.toUpperCase();
+                const valid = data.hourly[key].map((t, i) => {
+                    const ms = new Date(data.hourly.time[i]).getTime();
+                    return (ms >= now && ms <= windowEnd && t !== null) ? t : null;
+                }).filter(t => t !== null);
+                if (valid.length) {
+                    if (!result[modelName]) result[modelName] = {};
+                    result[modelName][dayNum] = Math.max(...valid).toFixed(1);
+                }
+            }
+            return result;
+        } catch(err) {
+            console.error('Prev run highs error:', err);
+            return {};
+        }
+    }
+
+    // ── Render table ──────────────────────────────────────────────────────────
+    function renderTable(results, unit, location) {
+        if (!results.length) { showNoData(); return; }
+        const u = unit === 'celsius' ? '°C' : '°F';
+
+        let sorted = [...results];
+        if (location.modelOrder) {
+            const orderResolved = location.modelOrder.map(resolveModelName);
+            // Filter: only show models explicitly listed in this city's modelOrder
+            sorted = sorted.filter(r => orderResolved.includes(resolveModelName(r.model)));
+            // Sort by the position defined in modelOrder
+            sorted.sort((a, b) =>
+                orderResolved.indexOf(resolveModelName(a.model)) -
+                orderResolved.indexOf(resolveModelName(b.model))
+            );
+        }
+
+        forecastBody.innerHTML = sorted.map(result => {
+            const isEnabled = enabledModels.has(result.model);
+            const rowStyle  = isEnabled ? '' : 'style="opacity:0.4"';
+            const modelDisplay = formatModelName(result.model, location);
+
+            const modelPrevRuns = prevRunsMap[result.model];
+            let prevCellContent;
+            if (!modelPrevRuns || !Object.keys(modelPrevRuns).length) {
+                prevCellContent = `<span class="prev-runs-none">&#8213; no data</span>`;
+            } else {
+                const curr = parseFloat(result.high);
+                prevCellContent = [1,2,3,4].map(day => {
+                    const val = modelPrevRuns[day];
+                    if (val === undefined) return '';
+                    const diff    = curr - parseFloat(val);
+                    const absDiff = Math.abs(diff).toFixed(1);
+                    let arrow, cls, diffStr;
+                    if (Math.abs(diff) < 0.15) {
+                        arrow = '&#8213;'; cls = 'flat'; diffStr = '';
+                    } else if (diff > 0) {
+                        arrow = '&#8593;'; cls = 'up';   diffStr = `+${absDiff}${u}`;
+                    } else {
+                        arrow = '&#8595;'; cls = 'down'; diffStr = `&#8722;${absDiff}${u}`;
+                    }
+                    return `<div class="prev-run-row">
+                        <span class="prev-run-label">${PREV_DAY_LABELS[day]}:</span>
+                        <span class="prev-run-val">${val}${u}</span>
+                        <span class="prev-run-trend ${cls}">${arrow}</span>
+                        ${diffStr ? `<span class="prev-run-diff">${diffStr}</span>` : ''}
+                    </div>`;
+                }).join('');
+            }
+
+            return `<tr ${rowStyle}>
+                <td>${modelDisplay}</td>
+                <td>${result.high}${u}</td>
+                <td class="prev-runs-cell">${prevCellContent}</td>
+                <td>${formatTime(result.time)}</td>
+${['me','rmse','target','2s','3s'].map(col => {
+                    const k = modelKeyMap[resolveModelName(result.model)] || '';
+                    return `<td data-stat-key="${k}" data-stat-col="${col}" style="font-size:12px;color:#ccc;">${fmtStatCell(modelStatsCache[k], col, u)}</td>`;
+                }).join('')}
+            </tr>`;
+        }).join('');
+    }
+
+    // ── Render main chart ─────────────────────────────────────────────────────
+    function renderChart(results, unit, location) {
+        const ctx = document.getElementById('temperature-chart').getContext('2d');
+        if (temperatureChart) temperatureChart.destroy();
+
+        let sorted = [...results];
+        if (location.modelOrder) {
+            const orderResolved = location.modelOrder.map(resolveModelName);
+            // Mirror table behaviour: only show + sort by modelOrder
+            sorted = sorted.filter(r => orderResolved.includes(resolveModelName(r.model)));
+            sorted.sort((a, b) =>
+                orderResolved.indexOf(resolveModelName(a.model)) -
+                orderResolved.indexOf(resolveModelName(b.model))
+            );
+        }
+        currentChartData = sorted;
+        enabledModels.clear();
+        sorted.forEach(r => {
+            const defaultResolved = (location.defaultModels || []).map(resolveModelName);
+            if (location.defaultModels ? defaultResolved.includes(resolveModelName(r.model)) : true)
+                enabledModels.add(r.model);
+        });
+
+        const u = unit === 'celsius' ? '°C' : '°F';
+        const datasets = sorted.map(r => {
+            const defaultResolved = (location.defaultModels || []).map(resolveModelName);
+            const on = location.defaultModels ? defaultResolved.includes(resolveModelName(r.model)) : true;
+            return { label:r.model, data:r.hourlyData, borderColor:getModelColor(r.model), backgroundColor:getModelColor(r.model)+'20', borderWidth:2, pointRadius:2, pointHoverRadius:5, tension:0.4, fill:false, hidden:!on };
+        });
+
+        temperatureChart = new Chart(ctx, {
+            type:'line', data:{ datasets },
+            options:{
+                responsive:true, maintainAspectRatio:false,
+                interaction:{ mode:'index', intersect:false },
+                plugins:{ legend:{ display:false },
+                    tooltip:{ backgroundColor:'rgba(0,0,0,0.85)', titleColor:'#fff', bodyColor:'#fff', borderColor:'#ffb74d', borderWidth:1, displayColors:true, padding:12,
+                        callbacks:{
+                            title: c => new Date(c[0].parsed.x).toLocaleString('en-US',{ month:'short', day:'numeric', hour:'numeric', minute:'2-digit', hour12:true }),
+                            label: c => `${c.dataset.label}: ${c.parsed.y.toFixed(1)}${u}`
+                        }
+                    }
+                },
+                scales:{
+                    x:{ type:'time', time:{ unit:'hour', displayFormats:{ hour:'ha' }, tooltipFormat:'MMM d, h:mm a' }, grid:{ color:'rgba(255,255,255,0.1)' }, ticks:{ color:'#aaa', maxRotation:0, autoSkip:true, maxTicksLimit:12 } },
+                    y:{ grid:{ color:'rgba(255,255,255,0.1)' }, ticks:{ color:'#aaa', callback:v => v+u } }
+                }
+            }
+        });
+        generateModelToggles(sorted, location);
+    }
+
+    function generateModelToggles(results, location) {
+        modelTogglesContainer.innerHTML = '';
+        results.forEach((r, i) => {
+            const defaultResolved = (location.defaultModels || []).map(resolveModelName);
+            const on  = location.defaultModels ? defaultResolved.includes(resolveModelName(r.model)) : true;
+            const div = document.createElement('div'); div.className = 'model-toggle-item';
+            const cb  = document.createElement('input'); cb.type='checkbox'; cb.id=`toggle-${i}`; cb.checked=on; cb.dataset.index=i;
+            const lbl = document.createElement('label'); lbl.htmlFor=`toggle-${i}`;
+            const dot = document.createElement('span'); dot.className='color-indicator'; dot.style.backgroundColor=getModelColor(r.model);
+            lbl.appendChild(dot); lbl.appendChild(document.createTextNode(r.model));
+            div.appendChild(cb); div.appendChild(lbl); modelTogglesContainer.appendChild(div);
+            cb.addEventListener('change', e => {
+                const idx = parseInt(e.target.dataset.index);
+                if (temperatureChart) { temperatureChart.getDatasetMeta(idx).hidden = !e.target.checked; temperatureChart.update(); }
+                if (e.target.checked) enabledModels.add(r.model); else enabledModels.delete(r.model);
+                renderTable(currentChartData, currentLocation.unit, currentLocation);
+            });
+        });
+    }
+
+    function toggleAllModels() {
+        const cbs = modelTogglesContainer.querySelectorAll('input[type="checkbox"]');
+        const newState = !Array.from(cbs).some(cb => cb.checked);
+        enabledModels.clear();
+        cbs.forEach((cb, i) => {
+            cb.checked = newState;
+            if (temperatureChart) temperatureChart.getDatasetMeta(i).hidden = !newState;
+            if (newState && currentChartData) enabledModels.add(currentChartData[i].model);
+        });
+        if (temperatureChart) temperatureChart.update();
+        if (currentChartData && currentLocation) renderTable(currentChartData, currentLocation.unit, currentLocation);
+    }
+
+    // Generates the Polymarket event URL for "highest temperature in {city} on {date}"
+    // City names with spaces are hyphenated (e.g. "Buenos Aires" → "buenos-aires")
+    function generatePolymarketURL(location) {
+        const now    = new Date();
+        const months = ['january','february','march','april','may','june',
+                        'july','august','september','october','november','december'];
+        const citySlug = location.city.toLowerCase().replace(/\s+/g, '-');
+        return `https://polymarket.com/event/highest-temperature-in-${citySlug}-on-`
+             + `${months[now.getMonth()]}-${now.getDate()}-${now.getFullYear()}`;
+    }
+
+    function updateInfoBar(location) {
+        locationNameEl.textContent    = `${location.city} (${location.icao})`;
+        temperatureUnitEl.textContent = location.unit === 'celsius' ? 'Celsius' : 'Fahrenheit';
+        lastUpdatedEl.textContent     = new Date().toLocaleTimeString('en-US',{ hour:'2-digit', minute:'2-digit', hour12:true });
+        wundergroundLink.href         = location.wunderground;
+        document.getElementById('polymarket-link').href = generatePolymarketURL(location);
+        infoBar.style.display         = 'flex';
+    }
+
+    // ── Previous Runs chart ───────────────────────────────────────────────────
+    async function fetchPreviousRuns(location, modelKey) {
+        const vars = PREVIOUS_RUN_DEFS.map(d => d.key).join(',');
+        const url  = `https://previous-runs-api.open-meteo.com/v1/forecast`
+                   + `?latitude=${location.lat}&longitude=${location.lon}`
+                   + `&hourly=${vars}&temperature_unit=${location.unit}`
+                   + `&timezone=auto&forecast_days=2&models=${modelKey}`;
+        try {
+            const r = await fetch(url);
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            const data = await r.json();
+            if (!data.hourly?.time) return [];
+            const now = Date.now(), end = now + 24*3600*1000;
+            return PREVIOUS_RUN_DEFS.map(def => {
+                const temps = data.hourly[def.key];
+                if (!temps) return null;
+                const points = data.hourly.time.map((t, i) => {
+                    const ms = new Date(t).getTime();
+                    return (ms >= now && ms <= end && temps[i] !== null) ? { x:t, y:temps[i] } : null;
+                }).filter(Boolean);
+                return points.length ? { label:def.label, data:points } : null;
+            }).filter(Boolean);
+        } catch(e) { console.error('Prev runs chart error:', e); return []; }
+    }
+
+    function buildPreviousRunsLegend(runs) {
+        prevRunsLegend.innerHTML = '';
+        runs.forEach((run, i) => {
+            const def  = PREVIOUS_RUN_DEFS[i] || PREVIOUS_RUN_DEFS[PREVIOUS_RUN_DEFS.length-1];
+            const item = document.createElement('span');
+            item.className = 'legend-item'; item.dataset.index = i;
+            item.innerHTML = `<span class="legend-dot" style="background-color:${def.color}"></span>${run.label}`;
+            if (run.hidden) item.classList.add('disabled');
+            item.addEventListener('click', () => {
+                if (!previousRunsChart) return;
+                const meta = previousRunsChart.getDatasetMeta(i);
+                meta.hidden = !meta.hidden; previousRunsChart.update();
+                item.classList.toggle('disabled', meta.hidden);
+            });
+            prevRunsLegend.appendChild(item);
+        });
+    }
+
+    function renderPreviousRunsChart(runs, unit) {
+        const ctx = document.getElementById('previous-runs-chart').getContext('2d');
+        if (previousRunsChart) previousRunsChart.destroy();
+        const u = unit === 'celsius' ? '°C' : '°F';
+        const datasets = runs.map((run, i) => {
+            const def = PREVIOUS_RUN_DEFS[i] || PREVIOUS_RUN_DEFS[PREVIOUS_RUN_DEFS.length-1];
+            return { label:run.label, data:run.data, borderColor:def.color, backgroundColor:def.color, borderWidth:def.borderWidth, pointRadius:0, pointHoverRadius:4, tension:0.4, fill:false };
+        });
+        previousRunsChart = new Chart(ctx, {
+            type:'line', data:{ datasets },
+            options:{
+                responsive:true, maintainAspectRatio:false,
+                interaction:{ mode:'index', intersect:false },
+                plugins:{ legend:{ display:false },
+                    tooltip:{ backgroundColor:'rgba(0,0,0,0.85)', titleColor:'#fff', bodyColor:'#fff', borderColor:'#ffb74d', borderWidth:1, displayColors:true, padding:12,
+                        callbacks:{
+                            title: c => new Date(c[0].parsed.x).toLocaleString('en-US',{ month:'short', day:'numeric', hour:'numeric', minute:'2-digit', hour12:true }),
+                            label: c => `${c.dataset.label}: ${c.parsed.y.toFixed(1)}${u}`
+                        }
+                    }
+                },
+                scales:{
+                    x:{ type:'time', time:{ unit:'hour', displayFormats:{ hour:'ha' }, tooltipFormat:'MMM d, h:mm a' }, grid:{ color:'rgba(255,255,255,0.1)' }, ticks:{ color:'#aaa', maxRotation:0, autoSkip:true, maxTicksLimit:12 } },
+                    y:{ grid:{ color:'rgba(255,255,255,0.1)' }, ticks:{ color:'#aaa', callback:v => v+u } }
+                }
+            }
+        });
+        buildPreviousRunsLegend(runs);
+    }
+
+    async function refreshPreviousRuns() {
+        if (!currentLocation) return;
+        try {
+            const runs = await fetchPreviousRuns(currentLocation, prevRunsModelSelect.value);
+            if (runs.length) renderPreviousRunsChart(runs, currentLocation.unit);
+            else prevRunsLegend.innerHTML = '<span style="color:var(--text-muted);font-size:13px;">No previous run data available for this model.</span>';
+        } catch(e) { console.error(e); }
+    }
+
+    // ── Main orchestrator ─────────────────────────────────────────────────────
+
+    // ── Historical accuracy chart ──────────────────────────────────────────────
+    // Uses previous-runs API with past_days=2, forecast_days=0.
+    // Returns last 48h of data: actual analysis + what each previous run predicted.
+    async function fetchHistoricalRuns(location, modelKey) {
+        const vars = HISTORICAL_RUN_DEFS.map(d => d.key).join(',');
+        const url  = `https://previous-runs-api.open-meteo.com/v1/forecast`
+                   + `?latitude=${location.lat}&longitude=${location.lon}`
+                   + `&hourly=${vars}&temperature_unit=${location.unit}`
+                   + `&timezone=UTC&past_days=3&forecast_days=1&models=${modelKey}`;
+        try {
+            const r = await fetch(url);
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            const data = await r.json();
+            if (!data.hourly?.time) return [];
+            const now    = Date.now();
+            const cutoff = now - 48 * 3600 * 1000;   // rolling 48h window — matches METAR
+            return HISTORICAL_RUN_DEFS.map(def => {
+                const temps = data.hourly[def.key];
+                if (!temps) return null;
+                const points = data.hourly.time.map((t, i) => {
+                    const ms = new Date(t + 'Z').getTime();
+                    return (ms >= cutoff && ms <= now && temps[i] !== null)
+                        ? { x: t + 'Z', y: temps[i] } : null;
+                }).filter(Boolean);
+                return points.length ? { label:def.label, data:points } : null;
+            }).filter(Boolean);
+        } catch(e) { console.error('Historical runs error:', e); return []; }
+    }
+
+    function buildHistoricalLegend(runs, defs) {
+        historicalLegend.innerHTML = '';
+        const resolvedDefs = defs || HISTORICAL_RUN_DEFS;
+        runs.forEach((run, i) => {
+            const def  = resolvedDefs[i] || resolvedDefs[resolvedDefs.length-1];
+            const item = document.createElement('span');
+            item.className = 'legend-item'; item.dataset.index = i;
+            item.innerHTML = `<span class="legend-dot" style="background-color:${def.color}"></span>${run.label}`;
+            if (run.hidden) item.classList.add('disabled');
+            item.addEventListener('click', () => {
+                if (!historicalChart) return;
+                const meta = historicalChart.getDatasetMeta(i);
+                meta.hidden = !meta.hidden; historicalChart.update();
+                item.classList.toggle('disabled', meta.hidden);
+            });
+            historicalLegend.appendChild(item);
+        });
+    }
+
+    function renderHistoricalChart(runs, unit, defs) {
+        const ctx = document.getElementById('historical-chart').getContext('2d');
+        if (historicalChart) historicalChart.destroy();
+        const u = unit === 'celsius' ? '°C' : '°F';
+        const resolvedDefs = defs || HISTORICAL_RUN_DEFS;
+        const datasets = runs.map((run, i) => {
+            const def = resolvedDefs[i] || resolvedDefs[resolvedDefs.length-1];
+            return {
+                label: run.label, data: run.data,
+                hidden: !!run.hidden,
+                borderColor: def.color, backgroundColor: def.color,
+                borderWidth: def.borderWidth,
+                borderDash: def.borderDash,
+                pointRadius: 0, pointHoverRadius: 4,
+                tension: 0.3, fill: false
+            };
+        });
+        historicalChart = new Chart(ctx, {
+            type:'line', data:{ datasets },
+            options:{
+                responsive:true, maintainAspectRatio:false,
+                interaction:{ mode:'index', intersect:false },
+                plugins:{ legend:{ display:false },
+                    tooltip:{ backgroundColor:'rgba(0,0,0,0.85)', titleColor:'#fff', bodyColor:'#fff', borderColor:'#ffffff', borderWidth:1, displayColors:true, padding:12,
+                        callbacks:{
+                            title: c => new Date(c[0].parsed.x).toLocaleString('en-US',{ month:'short', day:'numeric', hour:'numeric', minute:'2-digit', hour12:true }),
+                            label: c => `${c.dataset.label}: ${c.parsed.y.toFixed(1)}${u}`
+                        }
+                    }
+                },
+                scales:{
+                    x:{ type:'time', time:{ unit:'hour', displayFormats:{ hour:'MMM d ha' }, tooltipFormat:'MMM d, h:mm a' }, grid:{ color:'rgba(255,255,255,0.1)' }, ticks:{ color:'#aaa', maxRotation:0, autoSkip:true, maxTicksLimit:12 } },
+                    y:{ grid:{ color:'rgba(255,255,255,0.1)' }, ticks:{ color:'#aaa', callback:v => v+u } }
+                }
+            }
+        });
+        buildHistoricalLegend(runs, resolvedDefs);
+    }
+
+
+    // ── Fetch raw METAR hourly points (no rolling window filter) ──────────
+    async function fetchMetarRaw(location, hours) {
+        const target = `https://aviationweather.gov/api/data/metar`
+                     + `?ids=${location.icao}&format=json&hours=${hours}`;
+        const proxy  = `https://corsproxy.io/?${encodeURIComponent(target)}`;
+        try {
+            const r    = await fetch(proxy);
+            if (!r.ok) return [];
+            const data = await r.json();
+            if (!Array.isArray(data)) return [];
+            return data
+                .filter(o => o.temp != null)
+                .map(o => ({
+                    x: o.reportTime,
+                    y: location.unit === 'fahrenheit'
+                        ? Math.round(o.temp * 9/5 + 32)
+                        : Math.round(o.temp)
+                }))
+                .sort((a, b) => new Date(a.x) - new Date(b.x));
+        } catch(e) { return []; }
+    }
+
+    // ── Fetch model hourly analysis for N past days ─────────────────────────
+    async function fetchHistoricalAnalysis(location, modelKey) {
+        const url = `https://previous-runs-api.open-meteo.com/v1/forecast`
+                  + `?latitude=${location.lat}&longitude=${location.lon}`
+                  + `&hourly=temperature_2m&temperature_unit=${location.unit}`
+                  + `&timezone=UTC&past_days=6&forecast_days=1&models=${modelKey}`;
+        try {
+            const r = await fetch(url);
+            if (!r.ok) return null;
+            const data = await r.json();
+            if (!data.hourly?.time) return null;
+            const now = Date.now(), cutoff = now - 48 * 3600 * 1000;
+            return data.hourly.time.map((t, i) => {
+                const ms = new Date(t + 'Z').getTime();
+                return (ms >= cutoff && ms <= now && data.hourly.temperature_2m[i] !== null)
+                    ? { x: t + 'Z', y: data.hourly.temperature_2m[i] } : null;
+            }).filter(Boolean);
+        } catch(e) { return null; }
+    }
+
+    // ── Fetch model hourly analysis for 6 days (for daily-high stats) ───────
+    async function fetchAnalysis6d(location, modelKey) {
+        const url = `https://previous-runs-api.open-meteo.com/v1/forecast`
+                  + `?latitude=${location.lat}&longitude=${location.lon}`
+                  + `&hourly=temperature_2m&temperature_unit=${location.unit}`
+                  + `&timezone=UTC&past_days=6&forecast_days=0&models=${modelKey}`;
+        try {
+            const r = await fetch(url);
+            if (!r.ok) return [];
+            const d = await r.json();
+            if (!d.hourly?.time) return [];
+            return d.hourly.time
+                .map((t, i) => d.hourly.temperature_2m[i] != null
+                    ? { x: t + 'Z', y: d.hourly.temperature_2m[i] } : null)
+                .filter(Boolean);
+        } catch(e) { return []; }
+    }
+
+    // ── Fetch tomorrow's model daily high ───────────────────────────────────
+    async function fetchTomorrowHigh(location, modelKey) {
+        const url = `https://api.open-meteo.com/v1/forecast`
+                  + `?latitude=${location.lat}&longitude=${location.lon}`
+                  + `&daily=temperature_2m_max&temperature_unit=${location.unit}`
+                  + `&timezone=auto&forecast_days=2&past_days=0&models=${modelKey}`;
+        try {
+            const r = await fetch(url);
+            if (!r.ok) return null;
+            const d = await r.json();
+            return d.daily?.temperature_2m_max?.[1] ?? null;
+        } catch(e) { return null; }
+    }
+
+    // ── Core computation: daily-high RMSE, ME, σ, corrected target, bands ───
+    function computeDailyHighStats(modelPts, metarPts, tomorrowRaw, modelLabel, unit) {
+        const u = unit === 'celsius' ? '°C' : '°F';
+
+        // Group hourly pts by UTC calendar date
+        function byDay(pts) {
+            const m = {};
+            pts.forEach(p => {
+                const day = new Date(p.x).toISOString().slice(0, 10);
+                (m[day] = m[day] || []).push(p.y);
+            });
+            return m;
+        }
+        const modelDay = byDay(modelPts);
+        const metarDay = byDay(metarPts);
+
+        const today = new Date().toISOString().slice(0, 10);
+        const days  = Object.keys(modelDay)
+            .filter(d => metarDay[d] && metarDay[d].length >= 4 && d !== today)
+            .sort().slice(-5);
+
+        if (!days.length) { console.warn(`[Stats] ${modelLabel}: no overlapping days`); return null; }
+
+        // ── Step 1: per-day errors ──────────────────────────────────────────
+        const daily = days.map(day => {
+            const mH  = Math.max(...modelDay[day]);
+            const aH  = Math.max(...metarDay[day]);
+            const rM  = Math.round(mH);
+            const rA  = Math.round(aH);
+            const err = rM - rA;
+            return { day, mH, aH, rM, rA, err };
+        });
+
+        // ── Step 2: Mean Error ──────────────────────────────────────────────
+        const ME = daily.reduce((s, d) => s + d.err, 0) / daily.length;
+
+        // ── Step 3: RMSE & pure σ ───────────────────────────────────────────
+        const RMSE   = Math.sqrt(daily.reduce((s, d) => s + d.err ** 2, 0) / daily.length);
+        const sdRaw  = Math.sqrt(Math.max(0, RMSE * RMSE - ME * ME));
+        const floor  = unit === 'fahrenheit' ? 0.5 : 0.28;
+        const SD     = Math.max(sdRaw, floor);
+
+        // ── Step 4: corrected target for tomorrow ───────────────────────────
+        const rawPred     = tomorrowRaw;
+        const roundedPred = rawPred != null ? Math.round(rawPred) : null;
+        const target      = roundedPred != null ? roundedPred - ME : null;
+
+        // ── Step 5: sigma bands ─────────────────────────────────────────────
+        const bands = target != null ? {
+            upper2: target + 2 * SD, lower2: target - 2 * SD,
+            upper3: target + 3 * SD, lower3: target - 3 * SD
+        } : null;
+
+        // ── Console log ─────────────────────────────────────────────────────
+        console.group(`📊 ${modelLabel} — Daily High Stats`);
+        console.log(`  Training days (${daily.length}):`);
+        daily.forEach(d =>
+            console.log(`    ${d.day}  Model=${d.rM}${u}  METAR=${d.rA}${u}  Error=${d.err >= 0 ? '+' : ''}${d.err}`)
+        );
+        console.log(`  ► Mean Error (ME):  ${ME >= 0 ? '+' : ''}${ME.toFixed(2)}${u}  (${ME > 0 ? 'overshoots' : ME < 0 ? 'undershoots' : 'no bias'})`);
+        console.log(`  ► Daily High RMSE:  ${RMSE.toFixed(2)}${u}`);
+        console.log(`  ► Pure σ:           ${SD.toFixed(2)}${u}${sdRaw < floor ? '  [floor applied]' : ''}`);
+        if (target != null) {
+            console.log(`  ► Tomorrow raw:     ${rawPred?.toFixed(1)}${u}  →  rounded: ${roundedPred}${u}`);
+            console.log(`  ► Corrected Target: ${roundedPred} − ${ME.toFixed(2)} = ${target.toFixed(2)}${u}`);
+            console.log(`  ► 2σ Bounds:  [${bands.lower2.toFixed(1)}, ${bands.upper2.toFixed(1)}]${u}`);
+            console.log(`  ► 3σ Bounds:  [${bands.lower3.toFixed(1)}, ${bands.upper3.toFixed(1)}]${u}`);
+        }
+        console.groupEnd();
+
+        return { ME, RMSE, SD, correctedTarget: target, roundedPred, rawPred, bands, daily };
+    }
+
+    // ── Orchestrator: runs for every model, updates table + pills ───────────
+    async function fetchAllStats(location) {
+        if (!location.modelOrder) return;
+        const u = location.unit === 'celsius' ? '°C' : '°F';
+        const models = location.modelOrder.map(dn => {
+            const can = resolveModelName(dn);
+            const key = modelKeyMap[can] || modelKeyMap[dn];
+            return key ? { key, label: can } : null;
+        }).filter(Boolean);
+
+        console.group('🌡️ Polymarket Stats Engine — ' + location.name);
+        // Fetch METAR 6-day raw + per-model: analysis + tomorrow high — all parallel
+        const [metarPts, ...modelData] = await Promise.all([
+            fetchMetarRaw(location, 145),
+            ...models.map(m => Promise.all([
+                fetchAnalysis6d(location, m.key),
+                fetchTomorrowHigh(location, m.key)
+            ]))
+        ]);
+        console.log('METAR raw points fetched:', metarPts.length);
+
+        models.forEach((m, i) => {
+            const [analysisPts, tomorrowHigh] = modelData[i];
+            const stats = computeDailyHighStats(analysisPts, metarPts, tomorrowHigh, m.label, location.unit);
+            if (!stats) return;
+            modelStatsCache[m.key] = stats;
+
+            // Update table cells
+            document.querySelectorAll(`[data-stat-key="${m.key}"]`).forEach(el => {
+                const col = el.dataset.statCol;
+                el.innerHTML = fmtStatCell(stats, col, u);
+            });
+
+            // Update pill button
+            const btn = historicalModelToggles
+                ? historicalModelToggles.querySelector(`[data-key="${m.key}"]`) : null;
+            if (btn) btn.innerHTML = m.label
+                + ` <span style="font-size:9px;opacity:0.75;font-weight:400">`
+                + `ME ${stats.ME >= 0 ? '+' : ''}${stats.ME.toFixed(1)}${u}`
+                + ` σ${stats.SD.toFixed(1)}${u}</span>`;
+        });
+        console.groupEnd();
+    }
+
+    // ── Format a stat table cell by column name ──────────────────────────────
+    function fmtStatCell(s, col, u) {
+        if (!s) return '&#8213;';
+        switch (col) {
+            case 'me':     return `<span style="color:${s.ME > 0.3 ? '#f87171' : s.ME < -0.3 ? '#60a5fa' : '#aaa'}">`
+                                + `${s.ME >= 0 ? '+' : ''}${s.ME.toFixed(1)}${u}</span>`;
+            case 'rmse':   return `${s.RMSE.toFixed(1)}${u}`;
+            case 'target': return s.correctedTarget != null
+                                ? `<strong>${s.correctedTarget.toFixed(1)}${u}</strong>` : '&#8213;';
+            case '2s':     return s.bands
+                                ? `${s.bands.lower2.toFixed(0)}&ndash;${s.bands.upper2.toFixed(0)}` : '&#8213;';
+            case '3s':     return s.bands
+                                ? `${s.bands.lower3.toFixed(0)}&ndash;${s.bands.upper3.toFixed(0)}` : '&#8213;';
+            default: return '&#8213;';
+        }
+    }
+
+        // Fetches real METAR observations from aviationweather.gov for the last 48h.
+    // aviationweather.gov does not send CORS headers, so requests are routed
+    // through corsproxy.io which adds the required Access-Control-Allow-Origin header.
+    async function fetchActualWeather(location) {
+        const target  = `https://aviationweather.gov/api/data/metar`
+                      + `?ids=${location.icao}&format=json&hours=51`;
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(target)}`;
+        try {
+            const r = await fetch(proxyUrl);
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            const data = await r.json();
+            if (!Array.isArray(data) || !data.length) return null;
+            const now    = Date.now();
+            const cutoff = now - 48 * 3600 * 1000;   // same rolling 48h window as model
+            const points = data
+                .filter(obs => obs.temp !== null && obs.temp !== undefined)
+                .filter(obs => {
+                    const ms = new Date(obs.reportTime).getTime();
+                    return ms >= cutoff && ms <= now;
+                })
+                .map(obs => {
+                    const tempC = obs.temp;
+                    const y = location.unit === 'fahrenheit'
+                        ? Math.round(tempC * 9/5 + 32)
+                        : Math.round(tempC);
+                    // reportTime is the official hour label (US airports observe at :53,
+                    // report as the next :00) — aligns with Open-Meteo's hourly grid
+                    return { x: obs.reportTime, y };
+                })
+                .sort((a, b) => new Date(a.x) - new Date(b.x));
+            // Deduplicate to one point per hour, snapped to the top of the hour.
+            // SPECI reports create sub-hourly entries; without dedup, Chart.js
+            // tooltip mode:'index' snaps to those and finds no model data there.
+            const hourMap = new Map();
+            points.forEach(p => {
+                const d   = new Date(p.x);
+                const hTs = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours());
+                const off = Math.abs(d.getUTCMinutes() * 60 + d.getUTCSeconds());
+                if (!hourMap.has(hTs) || off < hourMap.get(hTs).off) {
+                    hourMap.set(hTs, { x: new Date(hTs).toISOString(), y: p.y, off });
+                }
+            });
+            const hourly = Array.from(hourMap.values())
+                .sort((a, b) => new Date(a.x) - new Date(b.x))
+                .map(({ x, y }) => ({ x, y }));
+            return hourly.length ? { label:'METAR Observed', data:hourly } : null;
+        } catch(e) { console.error('METAR fetch error:', e); return null; }
+    }
+
+    async function refreshHistoricalRuns() {
+        if (!currentLocation) return;
+        try {
+            const activeBtns = [...historicalModelToggles.querySelectorAll('.hist-model-btn.active')];
+            if (!activeBtns.length) { if (historicalChart) historicalChart.destroy(); return; }
+
+            // Fetch METAR + all active models in parallel
+            const [actualRun, ...perModelRuns] = await Promise.all([
+                fetchActualWeather(currentLocation),
+                ...activeBtns.map(btn => fetchHistoricalRuns(currentLocation, btn.dataset.key))
+            ]);
+
+            const allRuns = [], allDefs = [];
+            if (actualRun) { allRuns.push(actualRun); allDefs.push(ACTUAL_WEATHER_DEF); }
+
+            const multiModel = activeBtns.length > 1;
+            const opacities  = [0.95, 0.80, 0.60, 0.40, 0.22];
+            const u = currentLocation.unit === 'celsius' ? '°C' : '°F';
+            perModelRuns.forEach((runs, mi) => {
+                const btn       = activeBtns[mi];
+                const ci        = parseInt(btn.dataset.ci);
+                const [r, g, b] = HIST_MODEL_PALETTE[ci % HIST_MODEL_PALETTE.length];
+                const prefix    = multiModel ? btn.dataset.label + ' — ' : '';
+                // All 5 runs included; predicted (ri>0) start hidden but are toggle-able via legend
+                runs.forEach((run, ri) => {
+                    allRuns.push({ ...run, label: prefix + run.label, hidden: ri > 0 });
+                    allDefs.push({
+                        color:       `rgba(${r},${g},${b},${opacities[ri] ?? 0.22})`,
+                        borderWidth: ri === 0 ? 3 : 2,
+                        borderDash:  ri === 0 ? [] : [6, 3]
+                    });
+                });
+                // Compute RMSE for this model's analysis vs METAR
+                const rmse    = actualRun ? computeRMSE(runs[0]?.data, actualRun.data) : null;
+                const rmseStr = rmse !== null ? ` <span style="font-size:9px;opacity:0.75;font-weight:400">RMSE ${rmse.toFixed(1)}${u}</span>` : '';
+                btn.innerHTML = btn.dataset.label + rmseStr;
+                if (rmse !== null) {
+                    modelRmseCache[btn.dataset.key] = rmse;
+                    const cell = document.querySelector(`td[data-rmse-key="${btn.dataset.key}"]`);
+                    if (cell) cell.textContent = rmse.toFixed(1) + u;
+                }
+            });
+
+            if (allRuns.length) renderHistoricalChart(allRuns, currentLocation.unit, allDefs);
+            else historicalLegend.innerHTML = '<span style="color:var(--text-muted);font-size:13px;">No historical data available.</span>';
+        } catch(e) { console.error('Historical runs error:', e); }
+    }
+
+    // Repopulate both model comboboxes to match current city's modelOrder
+    function updateModelSelects(location) {
+        if (!location.modelOrder || !prevRunsModelSelect || !historicalModelToggles) return;
+        // ── Previous Runs combobox ────────────────────────────────────────
+        const prev = prevRunsModelSelect.value;
+        prevRunsModelSelect.innerHTML = '';
+        location.modelOrder.forEach(displayName => {
+            const canonical = resolveModelName(displayName);
+            const apiKey    = modelKeyMap[canonical] || modelKeyMap[displayName];
+            if (!apiKey) return;
+            const opt = document.createElement('option');
+            opt.value = apiKey; opt.textContent = canonical;
+            prevRunsModelSelect.appendChild(opt);
+        });
+        if ([...prevRunsModelSelect.options].some(o => o.value === prev)) prevRunsModelSelect.value = prev;
+
+        // ── Historical Accuracy: coloured pill checkboxes ─────────────────
+        historicalModelToggles.innerHTML = '';
+
+        location.modelOrder.forEach((displayName, ci) => {
+            const canonical = resolveModelName(displayName);
+            const apiKey    = modelKeyMap[canonical] || modelKeyMap[displayName];
+            if (!apiKey) return;
+            const [r, g, b] = HIST_MODEL_PALETTE[ci % HIST_MODEL_PALETTE.length];
+            const btn = document.createElement('button');
+            btn.className     = 'hist-model-btn' + (ci < 2 ? ' active' : '');
+            btn.dataset.key   = apiKey;
+            btn.dataset.label = canonical;
+            btn.dataset.ci    = ci;
+            btn.textContent   = canonical;
+            btn.style.borderColor = `rgb(${r},${g},${b})`;
+            if (ci < 2) {
+                btn.style.background = `rgba(${r},${g},${b},0.18)`;
+                btn.style.color = `rgb(${r},${g},${b})`;
+            }
+            btn.addEventListener('click', () => {
+                btn.classList.toggle('active');
+                if (btn.classList.contains('active')) {
+                    btn.style.background = `rgba(${r},${g},${b},0.18)`;
+                    btn.style.color = `rgb(${r},${g},${b})`;
+                } else {
+                    btn.style.background = 'transparent';
+                    btn.style.color = '#aaa';
+                }
+                refreshHistoricalRuns();
+            });
+            historicalModelToggles.appendChild(btn);
+        });
+    }
+
+    async function fetchAndDisplay(location) {
+        currentLocation = location;
+        clearError(); showLoading();
+        refreshBtn.disabled = true;
+        try {
+            updateModelSelects(location);
+            const [results, newPrevRunsMap] = await Promise.all([
+                fetchForecast(location),
+                fetchPrevRunHighs(location)
+            ]);
+            prevRunsMap = newPrevRunsMap;
+            renderChart(results, location.unit, location);
+            renderTable(results, location.unit, location);
+            updateInfoBar(location);
+            refreshPreviousRuns();
+            refreshHistoricalRuns();
+            fetchAllStats(location).catch(console.error);  // background — fills stat cols & pills
+        } catch(err) {
+            displayError('Unable to fetch forecast data. Please check your connection and try again.');
+            showNoData();
+        } finally {
+            refreshBtn.disabled = false;
+        }
+    }
+
+    locationSelect.addEventListener('change', e => fetchAndDisplay(locations[parseInt(e.target.value)]));
+    refreshBtn.addEventListener('click', () => { if (currentLocation) { forecastCache.delete(currentLocation.city); fetchAndDisplay(currentLocation); } });
+    toggleAllBtn.addEventListener('click', toggleAllModels);
+
+    // ── σ Bands toggle ────────────────────────────────────────────────────
+    let sigmaBandsActive = false;
+    sigmaBandsBtn.addEventListener('click', () => {
+        sigmaBandsActive = !sigmaBandsActive;
+        sigmaBandsBtn.classList.toggle('active', sigmaBandsActive);
+        applySigmaBands(sigmaBandsActive);
+    });
+
+    function applySigmaBands(active) {
+        if (!temperatureChart) return;
+        temperatureChart.data.datasets = temperatureChart.data.datasets
+            .filter(ds => !ds.__sigma);
+        if (!active || !currentLocation) { temperatureChart.update(); return; }
+
+        const xScale = temperatureChart.scales.x;
+        const x0 = new Date(xScale.min).toISOString();
+        const x1 = new Date(xScale.max).toISOString();
+
+        const models = (currentLocation.modelOrder || []).map(dn => {
+            const can = resolveModelName(dn);
+            const key = modelKeyMap[can] || modelKeyMap[dn];
+            return key ? { key, label: can } : null;
+        }).filter(Boolean);
+
+        models.forEach((m, mi) => {
+            const s = modelStatsCache[m.key];
+            if (!s?.bands) return;
+            const [r, g, b] = HIST_MODEL_PALETTE[mi % HIST_MODEL_PALETTE.length];
+            const mkLine = (y, dash, alpha, lbl) => ({
+                __sigma: true, label: lbl,
+                data: [{ x: x0, y }, { x: x1, y }],
+                borderColor: `rgba(${r},${g},${b},${alpha})`,
+                backgroundColor: 'transparent',
+                borderWidth: 1.5, borderDash: dash,
+                pointRadius: 0, pointHoverRadius: 0,
+                tension: 0, fill: false
+            });
+            temperatureChart.data.datasets.push(
+                mkLine(s.correctedTarget, [],    0.9,  `${m.label} — Target`),
+                mkLine(s.bands.upper2,   [6,3], 0.65, `${m.label} — +2σ`),
+                mkLine(s.bands.lower2,   [6,3], 0.65, `${m.label} — -2σ`),
+                mkLine(s.bands.upper3,   [2,4], 0.40, `${m.label} — +3σ`),
+                mkLine(s.bands.lower3,   [2,4], 0.40, `${m.label} — -3σ`)
+            );
+        });
+        temperatureChart.update();
+        console.log('[σ Bands] Applied for:', models.map(m => m.label).join(', '));
+    }
+    prevRunsModelSelect.addEventListener('change', refreshPreviousRuns);
+    // historical model toggles fire refreshHistoricalRuns via their click listeners
+
+    window.addEventListener('DOMContentLoaded', () => fetchAndDisplay(locations[0]));
+</script>
+</body>
+</html>
